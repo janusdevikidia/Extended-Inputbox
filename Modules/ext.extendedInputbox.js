@@ -2,6 +2,64 @@
 ( function ( $, mw ) {
     'use strict';
 
+    // On relance la même logique qu'à l'origine (mw.loader.using + query + expandtemplates),
+    // mais on la déclenche immédiatement au chargement du script au lieu d'attendre le hook
+    // 'wikipage.content' (DOM prêt). Le résultat est stocké dans un Deferred partagé : quel que
+    // soit le moment où le DOM devient prêt, on récupère ce même Deferred au lieu de relancer
+    // les requêtes.
+    var configsDeferred = $.Deferred();
+
+    mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'mediawiki.util', 'mediawiki.api' ], function () {
+        var api = new mw.Api();
+
+        // 1. Récupération du wikitext brut de la page actuelle
+        api.get( {
+            action: 'query',
+            prop: 'revisions',
+            rvprop: 'content',
+            rvslots: 'main',
+            titles: mw.config.get( 'wgPageName' ),
+            formatversion: 2
+        } ).then( function ( data ) {
+            var page = data && data.query && data.query.pages && data.query.pages[0];
+            if ( !page || !page.revisions || !page.revisions[0] ) {
+                return $.Deferred().reject( 'no-revision' );
+            }
+            var rawWikitext = page.revisions[0].slots.main.content;
+
+            // 2. Déploiement récursif de tous les modèles (y compris les modèles imbriqués)
+            return api.post( {
+                action: 'expandtemplates',
+                title: mw.config.get( 'wgPageName' ),
+                text: rawWikitext,
+                prop: 'wikitext',
+                formatversion: 2
+            } );
+        } ).done( function ( expData ) {
+            if ( !expData || !expData.expandtemplates || !expData.expandtemplates.wikitext ) {
+                mw.log.warn( '[Extended-Inputbox] Réponse expandtemplates vide ou invalide.' );
+                configsDeferred.resolve( [], api );
+                return;
+            }
+
+            var wikitext = expData.expandtemplates.wikitext;
+            var inputboxRegex = /<inputbox>([\s\S]*?)<\/inputbox>/gi;
+            var configs = [];
+            var match;
+
+            while ( ( match = inputboxRegex.exec( wikitext ) ) !== null ) {
+                configs.push( parseConfig( match[1] ) );
+            }
+
+            configsDeferred.resolve( configs, api );
+        } ).fail( function ( code, data ) {
+            // En cas d'échec (page introuvable, erreur API...), on ne bloque rien : les
+            // formulaires resteront de simples inputbox standards. On journalise pour diagnostic.
+            mw.log.warn( '[Extended-Inputbox] Échec de récupération/expansion du wikitext :', code, data );
+            configsDeferred.resolve( [], api );
+        } );
+    } );
+
     // Hook standard MediaWiki pour gérer le chargement initial et dynamique (AJAX/prévisualisation)
     mw.hook( 'wikipage.content' ).add( function ( $content ) {
         var $forms = [];
@@ -14,66 +72,33 @@
 
         if ( !$forms.length ) { return; }
 
-        // Griser immédiatement les boutons de soumission pendant le chargement et le traitement API
-        var $submitButtons = $( $forms ).find( 'input[type="submit"], button[type="submit"], .mw-ui-button' );
-        $submitButtons.prop( 'disabled', true );
+        // On attache tout de suite les gestionnaires de soumission, sans griser les boutons :
+        // le clic est intercepté immédiatement (preventDefault) puis mis en attente le temps
+        // que la configuration (déjà en cours de chargement) soit disponible. Dans l'immense
+        // majorité des cas, elle l'est déjà au moment où l'utilisateur clique.
+        $.each( $forms, function ( index, formEl ) {
+            var $form = $( formEl );
 
-        mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'mediawiki.util', 'mediawiki.api' ], function () {
-            var api = new mw.Api();
+            $form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
+                e.preventDefault();
 
-            // 1. Récupération du wikitext brut de la page actuelle
-            api.get( {
-                action: 'query',
-                prop: 'revisions',
-                rvprop: 'content',
-                rvslots: 'main',
-                titles: mw.config.get( 'wgPageName' ),
-                formatversion: 2
-            } ).then( function ( data ) {
-                var page = data && data.query && data.query.pages && data.query.pages[0];
-                if ( !page || !page.revisions || !page.revisions[0] ) {
-                    return $.Deferred().reject();
-                }
-                var rawWikitext = page.revisions[0].slots.main.content;
+                configsDeferred.done( function ( configs, api ) {
+                    if ( configs.length !== $forms.length ) {
+                        mw.log.warn( '[Extended-Inputbox] Nombre de formulaires DOM (' + $forms.length + ') et wikitext (' + configs.length + ') incohérent.' );
+                    }
 
-                // 2. Déploiement récursif de tous les modèles (y compris les modèles imbriqués)
-                return api.post( {
-                    action: 'expandtemplates',
-                    title: mw.config.get( 'wgPageName' ),
-                    text: rawWikitext,
-                    prop: 'wikitext',
-                    formatversion: 2
-                } );
-            } ).done( function ( expData ) {
-                if ( !expData || !expData.expandtemplates || !expData.expandtemplates.wikitext ) { return; }
-
-                var wikitext = expData.expandtemplates.wikitext;
-                var inputboxRegex = /<inputbox>([\s\S]*?)<\/inputbox>/gi;
-                var configs = [];
-                var match;
-
-                while ( ( match = inputboxRegex.exec( wikitext ) ) !== null ) {
-                    configs.push( parseConfig( match[1] ) );
-                }
-
-                if ( configs.length !== $forms.length ) {
-                    mw.log.warn( '[Extended-Inputbox] Nombre de formulaires DOM et wikitext incohérent.' );
-                }
-
-                $.each( $forms, function ( index, formEl ) {
                     var config = configs[ index ];
-                    if ( !config || ( !config.title && !config.fields.length ) ) { return; }
+                    if ( !config || ( !config.title && !config.fields.length ) ) {
+                        // Pas de configuration exploitable pour ce formulaire : on le laisse
+                        // partir normalement, comme un inputbox standard.
+                        mw.log.warn( '[Extended-Inputbox] Aucune configuration exploitable pour le formulaire n°' + index + '.' );
+                        $form.off( 'submit.extendedInputbox' );
+                        formEl.submit();
+                        return;
+                    }
 
-                    var $form = $( formEl );
-
-                    $form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
-                        e.preventDefault();
-                        openExtendedDialog( config, $form, api );
-                    } );
+                    openExtendedDialog( config, $form, api );
                 } );
-            } ).always( function () {
-                // Réactiver les boutons une fois la configuration analysée et les événements attachés
-                $submitButtons.prop( 'disabled', false );
             } );
         } );
     } );
@@ -148,169 +173,7 @@
             'CURRENTTIMESTAMP': timestamp,
             'LOCALYEAR': year,
             'CURRENTYEAR': year,
-            'LOCALMONTH': month,
-            'CURRENTMONTH': month,
-            'LOCALDAY': day,
-            'CURRENTDAY': day,
-            'LOCALTIME': timeStr,
-            'CURRENTTIME': timeStr,
-            'USER': userName,
-            'REVISIONUSER': userName,
-            'PAGENAME': pageName,
-            'FULLPAGENAME': pageName
-        };
-
-        var result = text;
-        Object.keys( magicMap ).forEach( function ( key ) {
-            var regex = new RegExp( '\\{\\{\\s*' + key + '\\s*\\}\\}', 'gi' );
-            result = result.replace( regex, magicMap[ key ] );
-        } );
-
-        return result;
-    }
-
-    function getParamValue( paramKey, paramIndex, formData, fields ) {
-        if ( formData[ paramKey ] !== undefined ) {
-            return formData[ paramKey ];
-        }
-
-        var cleanKey = paramKey.replace( /^\$/, '' );
-        var numIdx = parseInt( cleanKey, 10 );
-        if ( !isNaN( numIdx ) && numIdx > 0 && numIdx <= fields.length ) {
-            var fieldNameByNum = fields[ numIdx - 1 ].name;
-            if ( formData[ fieldNameByNum ] !== undefined ) {
-                return formData[ fieldNameByNum ];
-            }
-        }
-
-        if ( paramIndex < fields.length ) {
-            var fieldNameByIdx = fields[ paramIndex ].name;
-            if ( formData[ fieldNameByIdx ] !== undefined ) {
-                return formData[ fieldNameByIdx ];
-            }
-        }
-
-        return '';
-    }
-
-    function replaceVariables( text, paramOrder, formData, fields ) {
-        if ( !text ) { return ''; }
-        var result = text;
-
-        var totalVars = Math.max( paramOrder.length, fields.length, 9 );
-        var items = [];
-
-        for ( var i = 0; i < totalVars; i++ ) {
-            var paramKey = paramOrder[ i ] || ( i < fields.length ? fields[ i ].name : ( i + 1 ).toString() );
-            var val = getParamValue( paramKey, i, formData, fields );
-            items.push( { num: i + 1, value: val } );
-        }
-
-        items.sort( function ( a, b ) { return b.num - a.num; } );
-
-        items.forEach( function ( item ) {
-            var regex = new RegExp( '\\$' + item.num + '(?!\\d)', 'g' );
-            result = result.replace( regex, function () { return item.value; } );
-        } );
-
-        return result;
-    }
-
-    function openExtendedDialog( config, $form, api ) {
-        function ExtendedDialog( config ) {
-            ExtendedDialog.super.call( this, config );
-        }
-        OO.inheritClass( ExtendedDialog, OO.ui.ProcessDialog );
-
-        ExtendedDialog.static.name = 'extendedInputboxDialog';
-        ExtendedDialog.static.title = config.title || 'Formulaire';
-        ExtendedDialog.static.actions = [
-            { action: 'save', label: 'Valider', flags: [ 'primary', 'progressive' ] },
-            { label: 'Annuler', flags: 'safe' }
-        ];
-
-        ExtendedDialog.prototype.initialize = function () {
-            ExtendedDialog.super.prototype.initialize.apply( this, arguments );
-            var dialog = this;
-            this.content = new OO.ui.PanelLayout( { padded: true, expanded: false } );
-            this.widgets = {};
-            this.fieldLayouts = {};
-
-            if ( config.text ) {
-                this.content.$element.append( $( '<p>' ).text( config.text ) );
-            }
-
-            config.fields.forEach( function ( field ) {
-                var widget;
-                if ( field.type === 'select' ) {
-                    var opts = field.options.split( ',' ).map( function ( o ) { 
-                        var v = o.trim(); return { data: v, label: v }; 
-                    } );
-                    widget = new OO.ui.DropdownInputWidget( { options: opts } );
-                } else if ( field.type === 'radio' ) {
-                    var opts = field.options.split( ',' ).map( function ( o ) { 
-                        var v = o.trim(); return { data: v, label: v }; 
-                    } );
-                    widget = new OO.ui.RadioSelectInputWidget( { options: opts } );
-                } else if ( field.type === 'checkbox' || field.type === 'checkboxes' ) {
-                    var opts = field.options ? field.options.split( ',' ).map( function ( o ) { 
-                        var v = o.trim(); return { data: v, label: v }; 
-                    } ) : [];
-                    widget = new OO.ui.CheckboxMultiselectInputWidget( { options: opts } );
-                } else if ( field.type === 'textarea' ) {
-                    widget = new OO.ui.MultilineTextInputWidget( { value: field.options } );
-                } else {
-                    widget = new OO.ui.TextInputWidget( { value: field.options } );
-                }
-
-                var layout = new OO.ui.FieldLayout( widget, {
-                    label: field.label,
-                    align: 'top'
-                } );
-
-                dialog.widgets[ field.name ] = widget;
-                dialog.fieldLayouts[ field.name ] = layout;
-                dialog.content.$element.append( layout.$element );
-            } );
-
-            function checkSingleCondition( condStr ) {
-                var eqIdx = condStr.indexOf( '=' );
-                if ( eqIdx === -1 ) { return false; }
-
-                var parentName = condStr.substring( 0, eqIdx ).trim();
-                var targetVal = condStr.substring( eqIdx + 1 ).trim();
-
-                var parentLayout = dialog.fieldLayouts[ parentName ];
-                var parentWidget = dialog.widgets[ parentName ];
-
-                var isParentVisible = parentLayout ? parentLayout.isVisible() : true;
-                if ( !isParentVisible || !parentWidget ) { return false; }
-
-                var parentVal = parentWidget.getValue();
-
-                if ( Array.isArray( parentVal ) ) {
-                    return parentVal.indexOf( targetVal ) !== -1;
-                }
-
-                return parentVal === targetVal;
-            }
-
-            function evaluateShowIf( rawCond ) {
-                var orBranches = rawCond.split( ',' );
-                return orBranches.some( function ( branch ) {
-                    var andConds = branch.split( '&' );
-                    return andConds.every( function ( cond ) {
-                        return checkSingleCondition( cond.trim() );
-                    } );
-                } );
-            }
-
-            function updateAllVisibilities() {
-                var changed = true;
-                var maxPasses = 10;
-                while ( changed && maxPasses > 0 ) {
-                    changed = false;
-                    maxPasses--;
+< truncated lines 176-338 >
 
                     config.fields.forEach( function ( field ) {
                         if ( !field.showIf ) { return; }
