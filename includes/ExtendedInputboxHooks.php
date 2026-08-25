@@ -3,12 +3,11 @@ use MediaWiki\Extension\InputBox\InputBox;
 
 class ExtendedInputboxHooks {
 
-    public static function onBeforePageDisplay( $out, $skin ) {
+    public static function onBeforePageDisplay( OutputPage $out, $skin ) {
         $out->addModules( 'ext.extendedInputbox' );
     }
 
     public static function onParserFirstCallInit( Parser $parser ) {
-        // Écrase le hook <inputbox> d'InputBox
         $parser->setHook( 'inputbox', [ self::class, 'renderExtendedInputbox' ] );
     }
 
@@ -66,7 +65,6 @@ class ExtendedInputboxHooks {
 
         $cleanInput = implode( "\n", $cleanInputLines );
 
-        // Rendu via l'extension native
         if ( class_exists( 'MediaWiki\Extension\InputBox\InputBox' ) ) {
             $inputBox = new InputBox( $parser );
             $html = $inputBox->render( $cleanInput, $args, $parser, $frame );
@@ -78,8 +76,8 @@ class ExtendedInputboxHooks {
         }
 
         $jsonConfig = htmlspecialchars( json_encode( $config ), ENT_QUOTES, 'UTF-8' );
-        $wrapper = "<div class=\"extended-inputbox-wrapper\" data-extended-config=\"{$jsonConfig}\">{$html}</div>";
+        $wrapper = "<!-- EXTENDED INPUTBOX OK --><div class=\"extended-inputbox-wrapper\" data-extended-config=\"{$jsonConfig}\">{$html}</div>";
 
-        return [ $wrapper, 'markerType' => 'nowiki' ];
+        return [ $wrapper, 'noparse' => true, 'isHTML' => true ];
     }
 }
