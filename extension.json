@@ -32,7 +32,8 @@
         }
     },
     "Hooks": {
-        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay"
+        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay",
+        "ParserFirstCallInit": "ExtendedInputboxHooks::onParserFirstCallInit"
     },
     "MessagesDirs": {
         "ExtendedInputbox": [
