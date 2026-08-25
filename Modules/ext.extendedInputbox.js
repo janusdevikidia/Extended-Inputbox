@@ -79,8 +79,11 @@
                     } );
                 } );
             } ).always( function () {
-                // Réactiver les boutons une fois la configuration analysée et les événements attachés
-                $submitButtons.removeClass( 'ei-loading-block' );
+                // On réactive le comportement et l'apparence des boutons
+                var $allSubmitButtons = $( $forms ).find( 'input[type="submit"], button[type="submit"], .mw-ui-button' );
+                $allSubmitButtons.removeClass( 'ei-loading-block' );
+                $allSubmitButtons.css( { 'pointer-events': 'auto', 'opacity': '1' } ); // NOUVEAU
+                $( $forms ).off( 'submit.eiLoadingTemporaire' );
             } );
         } );
     } );
