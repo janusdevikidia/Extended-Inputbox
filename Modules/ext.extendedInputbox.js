@@ -11,32 +11,88 @@
 ( function ( $, mw ) {
     'use strict';
 
+
+    // Hook standard MediaWiki pour gérer le chargement initial et dynamique (AJAX/prévisualisation)
     mw.hook( 'wikipage.content' ).add( function ( $content ) {
-        var $forms = $content.find( '.mw-inputbox-centered, .mw-inputbox-container, form.createbox' );
+        var $forms = [];
+        $content.find( '.mw-inputbox-centered, .mw-inputbox-container, form.createbox' ).each( function () {
+            var $f = $( this ).is( 'form' ) ? $( this ) : $( this ).find( 'form' );
+            if ( $f.length && $forms.indexOf( $f[0] ) === -1 ) {
+                $forms.push( $f[0] );
+            }
+        } );
 
         if ( !$forms.length ) { return; }
 
-        mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'oojs-ui-windows', 'mediawiki.util', 'mediawiki.api' ], function () {
+        mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'mediawiki.util', 'mediawiki.api' ], function () {
             var api = new mw.Api();
 
-            $forms.each( function () {
-                var $container = $( this );
-                var $form = $container.is( 'form' ) ? $container : $container.find( 'form' );
-                
-                // Récupération de la config injectée par PHP dans l'attribut data-extended-config
-                var config = $container.data( 'extended-config' ) || $form.data( 'extended-config' );
+            // Texte brut de la page. Nécessaire notamment pour capter la syntaxe
+            // {{#tag:inputbox|...}}, qui est évaluée par MediaWiki dès le préprocessing
+            // (contrairement à <inputbox>...</inputbox> écrit littéralement, qui reste
+            // tel quel jusqu'à la génération finale du HTML). Passer par action=parse
+            // aurait déjà "consommé" ce genre de construction avant qu'on puisse la lire.
+            api.get( {
+                action: 'query',
+                prop: 'revisions',
+                rvprop: 'content',
+                rvslots: 'main',
+                titles: mw.config.get( 'wgPageName' ),
+                formatversion: 2
+            } ).done( function ( data ) {
+                var page = data.query.pages[0];
+                if ( !page || !page.revisions || !page.revisions[0] ) { return; }
 
-                if ( !config || ( !config.title && ( !config.fields || !config.fields.length ) ) ) {
-                    return;
+                var wikitext = page.revisions[0].slots.main.content;
+
+                // Deux syntaxes possibles pour un inputbox :
+                // 1) <inputbox> ... </inputbox>  (tag littéral)
+                // 2) {{#tag:inputbox| ... }}      (fonction parseur, contenu unique,
+                //    peut contenir des mots magiques comme {{CURRENTYEAR}} à l'intérieur)
+                var inputboxRegex = /<inputbox>([\s\S]*?)<\/inputbox>/gi;
+                var tagFuncRegex = /\{\{#tag:inputbox\s*\|((?:[^{}]|\{\{[^{}]*\}\})*)\}\}/gi;
+
+                var rawMatches = [];
+                var match;
+
+                while ( ( match = inputboxRegex.exec( wikitext ) ) !== null ) {
+                    rawMatches.push( { index: match.index, content: match[1] } );
+                }
+                while ( ( match = tagFuncRegex.exec( wikitext ) ) !== null ) {
+                    rawMatches.push( { index: match.index, content: match[1] } );
                 }
 
-                $form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
-                    e.preventDefault();
-                    openExtendedDialog( config, $form, api );
+                // Tri par position d'apparition dans le wikitext, pour rester aligné
+                // avec l'ordre des formulaires tel qu'ils apparaissent dans la page rendue.
+                rawMatches.sort( function ( a, b ) { return a.index - b.index; } );
+
+
+                var configs = rawMatches.map( function ( m ) {
+                    return parseConfig( m.content );
                 } );
+
+                if ( configs.length !== $forms.length ) {
+                    mw.log.warn( '[Extended-Inputbox] Nombre de formulaires DOM (' + $forms.length + ') et wikitext (' + configs.length + ') incohérent.' );
+                }
+
+                $.each( $forms, function ( index, formEl ) {
+                    var config = configs[ index ];
+                    if ( !config || ( !config.title && !config.fields.length ) ) { return; }
+
+                    var $form = $( formEl );
+
+                    $form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
+ 
+                        e.preventDefault();
+                        openExtendedDialog( config, $form, api );
+                    } );
+                } );
+            } ).fail( function ( code, err ) {
+                mw.log.error( '[Extended-Inputbox] Erreur API : ' + code, err );
             } );
         } );
     } );
+
 
     function parseConfig( rawText ) {
         var config = { fields: [], rawParams: {} };
