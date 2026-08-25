@@ -6,16 +6,15 @@ class ExtendedInputboxHooks {
     }
 
     public static function onParserFirstCallInit( Parser $parser ) {
-        // On intercepte la balise <inputbox> pour l'analyser avant MediaWiki
+        // Enregistre le hook après l'initialisation du parseur
         $parser->setHook( 'inputbox', [ self::class, 'renderExtendedInputbox' ] );
     }
 
     public static function renderExtendedInputbox( $input, array $args, Parser $parser, PPFrame $frame ) {
         $config = [ 'fields' => [], 'rawParams' => [] ];
         $lines = explode( "\n", $input );
-        $cleanInputLines = []; // Contiendra les paramètres natifs d'InputBox
+        $cleanInputLines = [];
 
-        // 1. Analyse du wikitext (équivalent PHP de ton parseConfig JS)
         foreach ( $lines as $line ) {
             $trimmed = trim( $line );
             if ( empty( $trimmed ) || strpos( $trimmed, '<!--' ) === 0 ) {
@@ -54,9 +53,8 @@ class ExtendedInputboxHooks {
                     ];
                 }
             } else {
-                // Paramètre classique d'InputBox : on le garde pour le formulaire natif
                 $config['rawParams'][$key] = $val;
-                $cleanInputLines[] = $line; 
+                $cleanInputLines[] = $line;
             }
         }
 
@@ -64,22 +62,25 @@ class ExtendedInputboxHooks {
             $config['skipEdit'] = true;
         }
 
-        $jsonConfig = htmlspecialchars( json_encode( $config ), ENT_QUOTES, 'UTF-8' );
         $cleanInput = implode( "\n", $cleanInputLines );
 
-        // 2. Appel de l'extension InputBox d'origine pour générer le HTML
+        // Rendu du formulaire via InputBox
         if ( class_exists( '\MediaWiki\Extension\InputBox\InputBox' ) ) {
             $inputBox = new \MediaWiki\Extension\InputBox\InputBox( $parser );
             $html = $inputBox->render( $cleanInput, $args );
+        } elseif ( class_exists( 'InputBox' ) ) {
+            $inputBox = new InputBox( $parser );
+            $html = $inputBox->render( $cleanInput );
         } else {
-            return "Erreur: Extension InputBox introuvable.";
+            return "Erreur : Extension InputBox introuvable.";
         }
 
-        // 3. Encapsulation dans une Div avec la configuration si besoin
-        if ( !empty( $config['title'] ) || !empty( $config['fields'] ) ) {
-            return "<div class='extended-inputbox-wrapper' data-extended-config='{$jsonConfig}'>{$html}</div>";
-        }
+        $jsonConfig = htmlspecialchars( json_encode( $config ), ENT_QUOTES, 'UTF-8' );
 
-        return $html;
+        // Englobe toujours le HTML généré dans la div de configuration
+        $wrapper = "<div class=\"extended-inputbox-wrapper\" data-extended-config=\"{$jsonConfig}\">{$html}</div>";
+
+        // Retourne sous forme de tableau avec markerType pour préserver les attributs HTML
+        return [ $wrapper, 'markerType' => 'nowiki' ];
     }
 }
