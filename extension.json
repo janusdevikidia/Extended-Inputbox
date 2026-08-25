@@ -4,6 +4,11 @@
     "author": "Célian & Janus",
     "type": "other",
     "manifest_version": 2,
+    "requires": {
+        "extensions": {
+            "InputBox": "*"
+        }
+    },
     "AutoloadClasses": {
         "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php"
     },
@@ -27,5 +32,10 @@
     },
     "Hooks": {
         "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay"
+    },
+    "MessagesDirs": {
+        "ExtendedInputbox": [
+            "i18n"
+        ]
     }
 }
