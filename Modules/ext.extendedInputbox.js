@@ -377,7 +377,6 @@
 
                     var urlParams = {};
                     $form.find( 'input, select, textarea' ).each( function () {
-                        alert('CLIC détecté sur le bouton');
 
                         var name = $( this ).attr( 'name' );
                         var val = $( this ).val();
