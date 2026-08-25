@@ -1,0 +1,31 @@
+{
+    "name": "Extended-Inputbox",
+    "version": "1.0.1",
+    "author": "Célian & Janus",
+    "type": "other",
+    "manifest_version": 2,
+    "AutoloadClasses": {
+        "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php"
+    },
+    "ResourceFileModulePaths": {
+        "localBasePath": "",
+        "remoteExtPath": "ExtendedInputbox"
+    },
+    "ResourceModules": {
+        "ext.extendedInputbox": {
+            "scripts": [
+                "modules/ext.extendedInputbox.js"
+            ],
+            "dependencies": [
+                "mediawiki.api",
+                "mediawiki.util",
+                "jquery",
+                "oojs-ui-core",
+                "oojs-ui-widgets"
+            ]
+        }
+    },
+    "Hooks": {
+        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay"
+    }
+}
