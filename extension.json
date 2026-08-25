@@ -26,7 +26,8 @@
                 "mediawiki.util",
                 "jquery",
                 "oojs-ui-core",
-                "oojs-ui-widgets"
+                "oojs-ui-widgets",
+                "oojs-ui-windows" 
             ]
         }
     },
