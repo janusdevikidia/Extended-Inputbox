@@ -21,13 +21,12 @@
             "scripts": [
                 "Modules/ext.extendedInputbox.js"
             ],
+            "styles": [
+                "Modules/ext.extendedInputbox.css"
+            ],
             "dependencies": [
                 "mediawiki.api",
-                "mediawiki.util",
-                "jquery",
-                "oojs-ui-core",
-                "oojs-ui-widgets",
-                "oojs-ui-windows" 
+                "mediawiki.util"
             ]
         }
     },
