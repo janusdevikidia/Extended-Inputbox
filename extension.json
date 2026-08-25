@@ -9,7 +9,7 @@
     },
     "ResourceFileModulePaths": {
         "localBasePath": "",
-        "remoteExtPath": "ExtendedInputbox"
+        "remoteExtPath": "Extended-Inputbox"
     },
     "ResourceModules": {
         "ext.extendedInputbox": {
