@@ -1,4 +1,6 @@
 <?php
+use MediaWiki\Extension\InputBox\InputBox;
+
 class ExtendedInputboxHooks {
 
     public static function onBeforePageDisplay( $out, $skin ) {
@@ -6,7 +8,7 @@ class ExtendedInputboxHooks {
     }
 
     public static function onParserFirstCallInit( Parser $parser ) {
-        // Enregistre le hook après l'initialisation du parseur
+        // Écrase le hook <inputbox> d'InputBox
         $parser->setHook( 'inputbox', [ self::class, 'renderExtendedInputbox' ] );
     }
 
@@ -64,10 +66,10 @@ class ExtendedInputboxHooks {
 
         $cleanInput = implode( "\n", $cleanInputLines );
 
-        // Rendu du formulaire via InputBox
-        if ( class_exists( '\MediaWiki\Extension\InputBox\InputBox' ) ) {
-            $inputBox = new \MediaWiki\Extension\InputBox\InputBox( $parser );
-            $html = $inputBox->render( $cleanInput, $args );
+        // Rendu via l'extension native
+        if ( class_exists( 'MediaWiki\Extension\InputBox\InputBox' ) ) {
+            $inputBox = new InputBox( $parser );
+            $html = $inputBox->render( $cleanInput, $args, $parser, $frame );
         } elseif ( class_exists( 'InputBox' ) ) {
             $inputBox = new InputBox( $parser );
             $html = $inputBox->render( $cleanInput );
@@ -76,11 +78,8 @@ class ExtendedInputboxHooks {
         }
 
         $jsonConfig = htmlspecialchars( json_encode( $config ), ENT_QUOTES, 'UTF-8' );
-
-        // Englobe toujours le HTML généré dans la div de configuration
         $wrapper = "<div class=\"extended-inputbox-wrapper\" data-extended-config=\"{$jsonConfig}\">{$html}</div>";
 
-        // Retourne sous forme de tableau avec markerType pour préserver les attributs HTML
         return [ $wrapper, 'markerType' => 'nowiki' ];
     }
 }
