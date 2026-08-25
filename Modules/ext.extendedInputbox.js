@@ -2,15 +2,6 @@
 ( function ( $, mw ) {
     'use strict';
 
-    // Style injecté une seule fois : bloque les clics pendant le chargement SANS l'aspect
-    // "grisé" natif d'un bouton disabled (pas d'opacité réduite, pas de curseur "interdit").
-    if ( !document.getElementById( 'ext-inputbox-loading-style' ) ) {
-        var styleTag = document.createElement( 'style' );
-        styleTag.id = 'ext-inputbox-loading-style';
-        styleTag.textContent = '.ei-loading-block { pointer-events: none; }';
-        document.head.appendChild( styleTag );
-    }
-
     // Hook standard MediaWiki pour gérer le chargement initial et dynamique (AJAX/prévisualisation)
     mw.hook( 'wikipage.content' ).add( function ( $content ) {
         var $forms = [];
@@ -23,12 +14,18 @@
 
         if ( !$forms.length ) { return; }
 
-        // Bloquer les clics pendant le chargement/traitement API, SANS griser les boutons
-        // (classe CSS "ei-loading-block" au lieu de l'attribut disabled).
+        // Bloquer les clics pendant le chargement/traitement API
         var $submitButtons = $( $forms ).find( 'input[type="submit"], button[type="submit"], .mw-ui-button' );
         $submitButtons.addClass( 'ei-loading-block' );
 
-        mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'mediawiki.util', 'mediawiki.api' ], function () {
+        // Ajout de 'oojs-ui-windows' dans les dépendances chargées à la volée
+        mw.loader.using( [ 
+            'oojs-ui-core', 
+            'oojs-ui-widgets', 
+            'oojs-ui-windows', 
+            'mediawiki.util', 
+            'mediawiki.api' 
+        ], function () {
             var api = new mw.Api();
 
             // 1. Récupération du wikitext brut de la page actuelle
