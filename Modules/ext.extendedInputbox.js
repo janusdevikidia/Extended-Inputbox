@@ -1,39 +1,129 @@
-/**
- * Extended-Inputbox pour Vikidia
- * - Analyse tolérante aux espaces (ex: key = value)
- * - Support des champs checkbox (multiselect) et formatage en liste dans le preload
- * - Support étendu de show-if avec listes/checkboxes et opérateurs conditionnels (& et ,)
- * - Mappage intelligent des variables ($1 à $9) par nom, index ou $N
- * - Construction robuste des URL via mw.util.getUrl (preloadparams[])
- * - Publication directe API (skip-edit=yes) avec substitution wikitext
- * - Alignement UTC et gestion dynamique du contenu via hooks MediaWiki
- */
+// <nowiki>
 ( function ( $, mw ) {
     'use strict';
 
+    // Hook standard MediaWiki pour gérer le chargement initial et dynamique (AJAX/prévisualisation)
     mw.hook( 'wikipage.content' ).add( function ( $content ) {
-        // On cible directement les conteneurs générés par notre hook PHP
-        var $wrappers = $content.find( '.extended-inputbox-wrapper' );
-        if ( !$wrappers.length ) { return; }
+        var $forms = [];
+        $content.find( '.mw-inputbox-centered, .mw-inputbox-container, form.createbox' ).each( function () {
+            var $f = $( this ).is( 'form' ) ? $( this ) : $( this ).find( 'form' );
+            if ( $f.length && $forms.indexOf( $f[0] ) === -1 ) {
+                $forms.push( $f[0] );
+            }
+        } );
 
-        mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'oojs-ui-windows', 'mediawiki.util', 'mediawiki.api' ], function () {
+        if ( !$forms.length ) { return; }
+
+        // Griser immédiatement les boutons de soumission pendant le chargement et le traitement API
+        var $submitButtons = $( $forms ).find( 'input[type="submit"], button[type="submit"], .mw-ui-button' );
+        $submitButtons.prop( 'disabled', true );
+
+        mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'mediawiki.util', 'mediawiki.api' ], function () {
             var api = new mw.Api();
 
-            $wrappers.each( function () {
-                var $wrapper = $( this );
-                var config = $wrapper.data( 'extended-config' );
-                var $form = $wrapper.find( 'form' );
+            // 1. Récupération du wikitext brut de la page actuelle
+            api.get( {
+                action: 'query',
+                prop: 'revisions',
+                rvprop: 'content',
+                rvslots: 'main',
+                titles: mw.config.get( 'wgPageName' ),
+                formatversion: 2
+            } ).then( function ( data ) {
+                var page = data && data.query && data.query.pages && data.query.pages[0];
+                if ( !page || !page.revisions || !page.revisions[0] ) {
+                    return $.Deferred().reject();
+                }
+                var rawWikitext = page.revisions[0].slots.main.content;
 
-                if ( !config || !$form.length ) return;
-
-                $form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
-                    e.preventDefault();
-                    openExtendedDialog( config, $form, api );
+                // 2. Déploiement récursif de tous les modèles (y compris les modèles imbriqués)
+                return api.post( {
+                    action: 'expandtemplates',
+                    title: mw.config.get( 'wgPageName' ),
+                    text: rawWikitext,
+                    prop: 'wikitext',
+                    formatversion: 2
                 } );
+            } ).done( function ( expData ) {
+                if ( !expData || !expData.expandtemplates || !expData.expandtemplates.wikitext ) { return; }
+
+                var wikitext = expData.expandtemplates.wikitext;
+                var inputboxRegex = /<inputbox>([\s\S]*?)<\/inputbox>/gi;
+                var configs = [];
+                var match;
+
+                while ( ( match = inputboxRegex.exec( wikitext ) ) !== null ) {
+                    configs.push( parseConfig( match[1] ) );
+                }
+
+                if ( configs.length !== $forms.length ) {
+                    mw.log.warn( '[Extended-Inputbox] Nombre de formulaires DOM et wikitext incohérent.' );
+                }
+
+                $.each( $forms, function ( index, formEl ) {
+                    var config = configs[ index ];
+                    if ( !config || ( !config.title && !config.fields.length ) ) { return; }
+
+                    var $form = $( formEl );
+
+                    $form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
+                        e.preventDefault();
+                        openExtendedDialog( config, $form, api );
+                    } );
+                } );
+            } ).always( function () {
+                // Réactiver les boutons une fois la configuration analysée et les événements attachés
+                $submitButtons.prop( 'disabled', false );
             } );
         } );
     } );
 
+    function parseConfig( rawText ) {
+        var config = { fields: [], rawParams: {} };
+        var lines = rawText.split( '\n' );
+
+        lines.forEach( function ( line ) {
+            line = line.trim();
+            if ( !line || line.indexOf( '<!--' ) === 0 ) { return; }
+
+            var eqIdx = line.indexOf( '=' );
+            if ( eqIdx === -1 ) { return; }
+
+            var key = line.substring( 0, eqIdx ).trim().toLowerCase();
+            var val = line.substring( eqIdx + 1 ).trim();
+
+            if ( key === 'popup-preload-params' || key === 'preload-params' || key === 'preloadparams' ) {
+                config.preloadParams = val.split( ',' ).map( function ( s ) { return s.trim(); } );
+            } else if ( key === 'popup-preload' || key === 'preload' ) {
+                config.preload = val;
+            } else if ( key === 'popup-title' ) {
+                config.title = val;
+            } else if ( key === 'popup-text' ) {
+                config.text = val;
+            } else if ( key === 'popup-skip-edit' || key === 'skip-edit' ) {
+                config.skipEdit = ( val.toLowerCase() === 'yes' );
+            } else if ( key === 'popup-field' ) {
+                var parts = val.split( '|' ).map( function ( s ) { return s.trim(); } );
+                if ( parts.length >= 3 ) {
+                    config.fields.push( {
+                        name: parts[0],
+                        type: parts[1],
+                        label: parts[2],
+                        options: parts[3] || '',
+                        showIf: parts[4] || ''
+                    } );
+                }
+            } else {
+                config.rawParams[ key ] = val;
+            }
+        } );
+
+        if ( config.rawParams['skip-edit'] && config.rawParams['skip-edit'].toLowerCase() === 'yes' ) {
+            config.skipEdit = true;
+        }
+
+        return config;
+    }
 
     function processMagicWords( text ) {
         if ( !text ) { return ''; }
@@ -183,7 +273,6 @@
                 dialog.content.$element.append( layout.$element );
             } );
 
-            // Évaluation d'une condition unique type "champ=valeur"
             function checkSingleCondition( condStr ) {
                 var eqIdx = condStr.indexOf( '=' );
                 if ( eqIdx === -1 ) { return false; }
@@ -199,7 +288,6 @@
 
                 var parentVal = parentWidget.getValue();
 
-                // Si le champ parent est un groupe de cases à cocher (renvoie un tableau)
                 if ( Array.isArray( parentVal ) ) {
                     return parentVal.indexOf( targetVal ) !== -1;
                 }
@@ -207,7 +295,6 @@
                 return parentVal === targetVal;
             }
 
-            // Évaluation des expressions complexes avec & (ET) et , (OU)
             function evaluateShowIf( rawCond ) {
                 var orBranches = rawCond.split( ',' );
                 return orBranches.some( function ( branch ) {
@@ -272,7 +359,6 @@
 
                     var urlParams = {};
                     $form.find( 'input, select, textarea' ).each( function () {
-
                         var name = $( this ).attr( 'name' );
                         var val = $( this ).val();
                         if ( name && val !== undefined && val !== '' && name !== 'fulltext' ) {
@@ -399,3 +485,4 @@
     }
 
 } )( jQuery, mediaWiki );
+// </nowiki>
