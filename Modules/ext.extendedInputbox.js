@@ -11,135 +11,29 @@
 ( function ( $, mw ) {
     'use strict';
 
-
-    // Hook standard MediaWiki pour gérer le chargement initial et dynamique (AJAX/prévisualisation)
     mw.hook( 'wikipage.content' ).add( function ( $content ) {
-        var $forms = [];
-        $content.find( '.mw-inputbox-centered, .mw-inputbox-container, form.createbox' ).each( function () {
-            var $f = $( this ).is( 'form' ) ? $( this ) : $( this ).find( 'form' );
-            if ( $f.length && $forms.indexOf( $f[0] ) === -1 ) {
-                $forms.push( $f[0] );
-            }
-        } );
+        // On cible directement les conteneurs générés par notre hook PHP
+        var $wrappers = $content.find( '.extended-inputbox-wrapper' );
+        if ( !$wrappers.length ) { return; }
 
-        if ( !$forms.length ) { return; }
-
-        mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'mediawiki.util', 'mediawiki.api' ], function () {
+        mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'oojs-ui-windows', 'mediawiki.util', 'mediawiki.api' ], function () {
             var api = new mw.Api();
 
-            // Texte brut de la page. Nécessaire notamment pour capter la syntaxe
-            // {{#tag:inputbox|...}}, qui est évaluée par MediaWiki dès le préprocessing
-            // (contrairement à <inputbox>...</inputbox> écrit littéralement, qui reste
-            // tel quel jusqu'à la génération finale du HTML). Passer par action=parse
-            // aurait déjà "consommé" ce genre de construction avant qu'on puisse la lire.
-            api.get( {
-                action: 'query',
-                prop: 'revisions',
-                rvprop: 'content',
-                rvslots: 'main',
-                titles: mw.config.get( 'wgPageName' ),
-                formatversion: 2
-            } ).done( function ( data ) {
-                var page = data.query.pages[0];
-                if ( !page || !page.revisions || !page.revisions[0] ) { return; }
+            $wrappers.each( function () {
+                var $wrapper = $( this );
+                var config = $wrapper.data( 'extended-config' );
+                var $form = $wrapper.find( 'form' );
 
-                var wikitext = page.revisions[0].slots.main.content;
+                if ( !config || !$form.length ) return;
 
-                // Deux syntaxes possibles pour un inputbox :
-                // 1) <inputbox> ... </inputbox>  (tag littéral)
-                // 2) {{#tag:inputbox| ... }}      (fonction parseur, contenu unique,
-                //    peut contenir des mots magiques comme {{CURRENTYEAR}} à l'intérieur)
-                var inputboxRegex = /<inputbox>([\s\S]*?)<\/inputbox>/gi;
-                var tagFuncRegex = /\{\{#tag:inputbox\s*\|((?:[^{}]|\{\{[^{}]*\}\})*)\}\}/gi;
-
-                var rawMatches = [];
-                var match;
-
-                while ( ( match = inputboxRegex.exec( wikitext ) ) !== null ) {
-                    rawMatches.push( { index: match.index, content: match[1] } );
-                }
-                while ( ( match = tagFuncRegex.exec( wikitext ) ) !== null ) {
-                    rawMatches.push( { index: match.index, content: match[1] } );
-                }
-
-                // Tri par position d'apparition dans le wikitext, pour rester aligné
-                // avec l'ordre des formulaires tel qu'ils apparaissent dans la page rendue.
-                rawMatches.sort( function ( a, b ) { return a.index - b.index; } );
-
-
-                var configs = rawMatches.map( function ( m ) {
-                    return parseConfig( m.content );
+                $form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
+                    e.preventDefault();
+                    openExtendedDialog( config, $form, api );
                 } );
-
-                if ( configs.length !== $forms.length ) {
-                    mw.log.warn( '[Extended-Inputbox] Nombre de formulaires DOM (' + $forms.length + ') et wikitext (' + configs.length + ') incohérent.' );
-                }
-
-                $.each( $forms, function ( index, formEl ) {
-                    var config = configs[ index ];
-                    if ( !config || ( !config.title && !config.fields.length ) ) { return; }
-
-                    var $form = $( formEl );
-
-                    $form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
- 
-                        e.preventDefault();
-                        openExtendedDialog( config, $form, api );
-                    } );
-                } );
-            } ).fail( function ( code, err ) {
-                mw.log.error( '[Extended-Inputbox] Erreur API : ' + code, err );
             } );
         } );
     } );
 
-
-    function parseConfig( rawText ) {
-        var config = { fields: [], rawParams: {} };
-        var lines = rawText.split( '\n' );
-
-        lines.forEach( function ( line ) {
-            line = line.trim();
-            if ( !line || line.indexOf( '<!--' ) === 0 ) { return; }
-
-            var eqIdx = line.indexOf( '=' );
-            if ( eqIdx === -1 ) { return; }
-
-            var key = line.substring( 0, eqIdx ).trim().toLowerCase();
-            var val = line.substring( eqIdx + 1 ).trim();
-
-            if ( key === 'popup-preload-params' || key === 'preload-params' || key === 'preloadparams' ) {
-                config.preloadParams = val.split( ',' ).map( function ( s ) { return s.trim(); } );
-            } else if ( key === 'popup-preload' || key === 'preload' ) {
-                config.preload = val;
-            } else if ( key === 'popup-title' ) {
-                config.title = val;
-            } else if ( key === 'popup-text' ) {
-                config.text = val;
-            } else if ( key === 'popup-skip-edit' || key === 'skip-edit' ) {
-                config.skipEdit = ( val.toLowerCase() === 'yes' );
-            } else if ( key === 'popup-field' ) {
-                var parts = val.split( '|' ).map( function ( s ) { return s.trim(); } );
-                if ( parts.length >= 3 ) {
-                    config.fields.push( {
-                        name: parts[0],
-                        type: parts[1],
-                        label: parts[2],
-                        options: parts[3] || '',
-                        showIf: parts[4] || ''
-                    } );
-                }
-            } else {
-                config.rawParams[ key ] = val;
-            }
-        } );
-
-        if ( config.rawParams['skip-edit'] && config.rawParams['skip-edit'].toLowerCase() === 'yes' ) {
-            config.skipEdit = true;
-        }
-
-        return config;
-    }
 
     function processMagicWords( text ) {
         if ( !text ) { return ''; }
