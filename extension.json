@@ -19,7 +19,7 @@
     "ResourceModules": {
         "ext.extendedInputbox": {
             "scripts": [
-                "modules/ext.extendedInputbox.js"
+                "Modules/ext.extendedInputbox.js"
             ],
             "dependencies": [
                 "mediawiki.api",
