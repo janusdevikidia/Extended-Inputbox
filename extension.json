@@ -24,10 +24,7 @@
             "dependencies": [
                 "mediawiki.api",
                 "mediawiki.util",
-                "jquery",
-                "oojs-ui-core",
-                "oojs-ui-widgets",
-                "oojs-ui-windows" 
+                "jquery"
             ]
         }
     },
