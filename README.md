@@ -19,4 +19,4 @@
    git clone https://github.com/Janusdevikidia/Extended-Inputbox.git
 
 >  [!NOTE]
-> La documentation est disponible : [https://fr.vikidia.org/wiki/Aide:Extended-Inputbox](Aide:Extended-Inputbox) sur Vikidia
+> La documentation est disponible : [Aide:Extended-Inputbox](https://fr.vikidia.org/wiki/Aide:Extended-Inputbox) sur Vikidia
