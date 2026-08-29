@@ -1,0 +1,28 @@
+
+# Dépendances et gestionnaires de paquets
+/vendor/
+/node_modules/
+composer.lock
+package-lock.json
+
+# Fichiers système et éditeurs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Builds, minification et assets générés
+/dist/
+/build/
+
+# Fichiers de configuration locaux ou secrets
+.env
+.env.local
+config.local.php
+
+# Rapport de tests et couverture de code
+/coverage/
+/.phpunit.cache/
+/.phpcs-cache
