@@ -1,25 +1,27 @@
 {
     "name": "Extended-Inputbox",
-    "version": "1.0.1",
+    "version": "2.0.0",
     "author": "Célian & Janus",
     "type": "other",
     "manifest_version": 2,
     "requires": {
         "extensions": {
             "InputBox": "*"
-        }
+        },
+        "MediaWiki": ">= 1.39.0"
     },
     "AutoloadClasses": {
-        "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php"
+        "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php",
+        "ExtendedInputboxConfig": "includes/ExtendedInputboxConfig.php"
     },
     "ResourceFileModulePaths": {
         "localBasePath": "",
         "remoteExtPath": "Extended-Inputbox"
     },
     "ResourceModules": {
-        "ext.extendedInputbox": {
+        "ext.extendedInputbox.fallback": {
             "scripts": [
-                "Modules/ext.extendedInputbox.js"
+                "Modules/ext.extendedInputbox.fallback.js"
             ],
             "styles": [
                 "Modules/ext.extendedInputbox.css"
@@ -28,10 +30,23 @@
                 "mediawiki.api",
                 "mediawiki.util"
             ]
+        },
+        "ext.extendedInputbox.popup": {
+            "scripts": [
+                "Modules/ext.extendedInputbox.popup.js"
+            ],
+            "dependencies": [
+                "oojs-ui-core",
+                "oojs-ui-widgets",
+                "oojs-ui-windows",
+                "mediawiki.api",
+                "mediawiki.util"
+            ]
         }
     },
     "Hooks": {
-        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay"
+        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay",
+        "OutputPageBeforeHTML": "ExtendedInputboxHooks::onOutputPageBeforeHTML"
     },
     "MessagesDirs": {
         "ExtendedInputbox": [
