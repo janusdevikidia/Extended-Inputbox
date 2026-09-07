@@ -11,6 +11,13 @@ class ExtendedInputboxHooks {
 	 * formulaires qui n'ont finalement pas de popup (voir plus bas), donc ce
 	 * blocage global ne dure que le temps du calcul PHP (quasi instantané, il
 	 * n'y a plus d'aller-retour réseau côté client).
+	 *
+	 * Important : on ne bloque QUE les clics (pointer-events), jamais
+	 * l'apparence (pas d'opacity). Les couleurs de bouton sont déjà correctes
+	 * dans le HTML initial (voir bakeIntoHtml()) ; si on baissait l'opacité
+	 * ici, le bouton apparaîtrait délavé/grisé le temps que le module popup
+	 * se charge, puis "flasherait" vers sa vraie couleur une fois le blocage
+	 * levé en JS — ce qui est exactement l'effet visuel à éviter.
 	 */
 	public static function onBeforePageDisplay( OutputPage $out, $skin ) {
 		// Module léger (pas d'OOUI) : ne fait rien sur une page sans InputBox,
@@ -20,7 +27,7 @@ class ExtendedInputboxHooks {
 
 		$out->addInlineStyle(
 			'.mw-inputbox-container input[type="submit"], .mw-inputbox-centered input[type="submit"], ' .
-			'form.createbox input[type="submit"], form.createbox button[type="submit"] { pointer-events: none; opacity: 0.6; }'
+			'form.createbox input[type="submit"], form.createbox button[type="submit"] { pointer-events: none; }'
 		);
 	}
 
@@ -175,7 +182,7 @@ class ExtendedInputboxHooks {
 				// blocage global de clic posé par onBeforePageDisplay(), pour
 				// que le bouton fonctionne normalement sans dépendre du JS.
 				foreach ( $btnNodes as $btn ) {
-					self::addInlineStyleAttr( $btn, 'pointer-events:auto;opacity:1;' );
+					self::addInlineStyleAttr( $btn, 'pointer-events:auto;' );
 				}
 			}
 
