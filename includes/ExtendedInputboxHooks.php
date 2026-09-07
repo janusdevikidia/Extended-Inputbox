@@ -130,7 +130,6 @@ class ExtendedInputboxHooks {
 			" or (local-name()='form' and contains(concat(' ', normalize-space(@class), ' '), ' createbox '))]"
 		);
 
-		$cssRules = [];
 		$popupConfigsForJs = [];
 		$hasPopups = false;
 		$hasColors = false;
@@ -161,10 +160,17 @@ class ExtendedInputboxHooks {
 
 			if ( $hasColor ) {
 				$hasColors = true;
-				$btnClass = 'extended-inputbox-btn-' . $currentIndex;
-				$cssRules[] = self::buildButtonCss( $btnClass, $config );
+				// Style posé directement en attribut sur le bouton (et non via
+				// une classe + un <style> séparé) : la couleur fait ainsi
+				// partie du même HTML que le bouton, sans dépendre de l'ordre
+				// de chargement d'une autre feuille de style dans le <head>.
+				// C'est ce qui élimine le flash "gris avant la vraie couleur".
+				$inlineStyle = self::buildButtonInlineStyle( $config );
 				foreach ( $btnNodes as $btn ) {
-					self::addClass( $btn, $btnClass );
+					self::addInlineStyleAttr( $btn, $inlineStyle );
+					if ( !empty( $config['buttonBgColor'] ) ) {
+						self::forceChildTextColor( $btn, '#ffffff' );
+					}
 				}
 			}
 
@@ -189,10 +195,6 @@ class ExtendedInputboxHooks {
 			if ( $hasErrors ) {
 				self::appendErrorNode( $dom, $container, $config['errors'] );
 			}
-		}
-
-		if ( $cssRules ) {
-			$out->addInlineStyle( implode( ' ', $cssRules ) );
 		}
 
 		if ( $hasPopups ) {
@@ -227,46 +229,57 @@ class ExtendedInputboxHooks {
 		return iterator_to_array( $nodes );
 	}
 
-	private static function addClass( DOMElement $el, $class ) {
-		$existing = $el->getAttribute( 'class' );
-		$el->setAttribute( 'class', trim( $existing . ' ' . $class ) );
-	}
-
 	private static function addInlineStyleAttr( DOMElement $el, $style ) {
 		$existing = $el->getAttribute( 'style' );
 		$el->setAttribute( 'style', rtrim( $existing, ';' ) . ( $existing ? ';' : '' ) . $style );
 	}
 
 	/**
-	 * Miroir exact de applyButtonStyle() côté JS (docstring conservée pour
-	 * mémoire du comportement voulu) :
+	 * Même comportement voulu que l'ancien buildButtonCss()/applyButtonStyle()
+	 * JS :
 	 * - button-bgcolor / button-bg          -> couleur de FOND
 	 * - button-border-color / button-border -> couleur de la BORDURE
 	 * - la couleur du texte n'est pas configurable : blanche dès qu'un fond est défini.
+	 *
+	 * Différence : ceci renvoie un style CSS destiné à être posé directement
+	 * en attribut `style` sur le bouton (voir addInlineStyleAttr), et non une
+	 * règle de classe à ajouter dans un <style> séparé. Poser la couleur dans
+	 * le même HTML que le bouton évite toute dépendance à l'ordre de
+	 * chargement d'une autre feuille de style dans le <head>.
 	 */
-	private static function buildButtonCss( $btnClass, array $config ) {
+	private static function buildButtonInlineStyle( array $config ) {
 		$bg = $config['buttonBgColor'] ?? '';
 		$textColor = $bg ? '#ffffff' : '';
 		$borderColor = $config['buttonBorderColor'] ?? 'transparent';
 
 		$rules = [];
 		if ( $bg ) {
-			$rules[] = 'background: ' . $bg . ' !important';
+			$rules[] = 'background:' . $bg . ' !important';
 		}
 		if ( $textColor ) {
-			$rules[] = 'color: ' . $textColor . ' !important';
+			$rules[] = 'color:' . $textColor . ' !important';
 		}
-		$rules[] = 'border: 2px solid ' . $borderColor . ' !important';
-		$rules[] = 'border-radius: 2px';
-		$rules[] = 'font-weight: 600';
-		$rules[] = 'box-shadow: none';
-		$rules[] = 'text-shadow: none';
+		$rules[] = 'border:2px solid ' . $borderColor . ' !important';
+		$rules[] = 'border-radius:2px';
+		$rules[] = 'font-weight:600';
+		$rules[] = 'box-shadow:none';
+		$rules[] = 'text-shadow:none';
 
-		$css = '.' . $btnClass . ' { ' . implode( '; ', $rules ) . '; }';
-		if ( $textColor ) {
-			$css .= ' .' . $btnClass . ' * { color: ' . $textColor . ' !important; }';
+		return implode( ';', $rules ) . ';';
+	}
+
+	/**
+	 * Force la couleur du texte sur les descendants du bouton (icônes, spans
+	 * internes) qui pourraient avoir leur propre style et ne pas hériter de
+	 * la couleur posée sur le bouton lui-même.
+	 */
+	private static function forceChildTextColor( DOMElement $btn, $color ) {
+		foreach ( $btn->childNodes as $child ) {
+			if ( $child instanceof DOMElement ) {
+				self::addInlineStyleAttr( $child, 'color:' . $color . ' !important;' );
+				self::forceChildTextColor( $child, $color );
+			}
 		}
-		return $css;
 	}
 
 	private static function appendErrorNode( DOMDocument $dom, DOMElement $container, array $errors ) {
