@@ -28,8 +28,10 @@
 
 			var $btn = $form.find( 'input[type="submit"], button[type="submit"], .mw-ui-button' );
 			// Lève le blocage de clic global posé côté serveur (onBeforePageDisplay)
-			// maintenant que le binding du dialogue est prêt.
-			$btn.css( { 'pointer-events': 'auto', 'opacity': '1' } );
+			// maintenant que le binding du dialogue est prêt. Pas d'opacity à
+			// restaurer : le blocage ne touche plus qu'aux clics (voir
+			// ExtendedInputboxHooks::onBeforePageDisplay).
+			$btn.css( { 'pointer-events': 'auto' } );
 
 			$form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
 				e.preventDefault();
