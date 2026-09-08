@@ -1,0 +1,71 @@
+{
+    "name": "Extended-Inputbox",
+    "version": "2.0.0",
+    "author": "Célian & Janus",
+    "type": "other",
+    "manifest_version": 2,
+    "requires": {
+        "extensions": {
+            "InputBox": "*"
+        },
+        "MediaWiki": ">= 1.39.0"
+    },
+    "AutoloadClasses": {
+        "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php",
+        "ExtendedInputboxConfig": "includes/ExtendedInputboxConfig.php"
+    },
+    "ResourceFileModulePaths": {
+        "localBasePath": "",
+        "remoteExtPath": "Extended-Inputbox"
+    },
+    "ResourceModules": {
+        "ext.extendedInputbox.fallback": {
+            "scripts": [
+                "Modules/ext.extendedInputbox.fallback.js"
+            ],
+            "styles": [
+                "Modules/ext.extendedInputbox.css"
+            ],
+            "messages": [
+                "extendedinputbox-error-popup-preload-deprecated",
+                "extendedinputbox-error-invalid-bgcolor",
+                "extendedinputbox-error-invalid-bordercolor"
+            ]
+        },
+        "ext.extendedInputbox.popup": {
+            "scripts": [
+                "Modules/ext.extendedInputbox.popup.js"
+            ],
+            "dependencies": [
+                "oojs-ui-core",
+                "oojs-ui-widgets",
+                "oojs-ui-windows",
+                "mediawiki.api",
+                "mediawiki.util"
+            ],
+            "messages": [
+                "extendedinputbox-default-title",
+                "extendedinputbox-btn-save",
+                "extendedinputbox-btn-cancel",
+                "extendedinputbox-default-pagename",
+                "extendedinputbox-default-username",
+                "extendedinputbox-error-unresolved-title",
+                "extendedinputbox-error-preload-fetch",
+                "extendedinputbox-error-publish",
+                "extendedinputbox-required-marker",
+                "extendedinputbox-error-field-required",
+                "extendedinputbox-error-field-minlength",
+                "extendedinputbox-error-field-maxlength"
+            ]
+        }
+    },
+    "Hooks": {
+        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay",
+        "OutputPageBeforeHTML": "ExtendedInputboxHooks::onOutputPageBeforeHTML"
+    },
+    "MessagesDirs": {
+        "ExtendedInputbox": [
+            "i18n"
+        ]
+    }
+}

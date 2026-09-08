@@ -1,0 +1,23 @@
+{
+	"@metadata": {
+		"authors": [
+			"Célian & Janus"
+		]
+	},
+	"extendedinputbox-desc": "Adds advanced dialog-based forms on top of InputBox",
+	"extendedinputbox-default-title": "Form",
+	"extendedinputbox-btn-save": "Submit",
+	"extendedinputbox-btn-cancel": "Cancel",
+	"extendedinputbox-default-pagename": "New page",
+	"extendedinputbox-default-username": "Anonymous",
+	"extendedinputbox-error-unresolved-title": "The generated page title still contains unresolved braces: $1. Check the \"page=\" parameter of the <inputbox> configuration.",
+	"extendedinputbox-error-preload-fetch": "Could not retrieve the preload template \"$1\". The page was not published. Check that this template exists and try again.",
+	"extendedinputbox-error-publish": "Error while publishing: $1",
+	"extendedinputbox-error-popup-preload-deprecated": "Error: the \"popup-preload\" parameter is no longer supported. Please use \"preload\" instead.",
+	"extendedinputbox-error-invalid-bgcolor": "Error: the value of \"button-bgcolor\" is not a valid CSS color.",
+	"extendedinputbox-error-invalid-bordercolor": "Error: the value of \"button-border-color\" is not a valid CSS color.",
+	"extendedinputbox-required-marker": "*",
+	"extendedinputbox-error-field-required": "The field \"$1\" is required.",
+	"extendedinputbox-error-field-minlength": "The field \"$1\" must contain at least $2 characters.",
+	"extendedinputbox-error-field-maxlength": "The field \"$1\" must not exceed $2 characters."
+}

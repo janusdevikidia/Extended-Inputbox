@@ -1,0 +1,23 @@
+{
+	"@metadata": {
+		"authors": [
+			"Célian & Janus"
+		]
+	},
+	"extendedinputbox-desc": "{{desc}}",
+	"extendedinputbox-default-title": "Default popup dialog title, used when \"popup-title\" is not set on the <inputbox>.",
+	"extendedinputbox-btn-save": "Label of the button that submits the popup form.",
+	"extendedinputbox-btn-cancel": "Label of the button that cancels/closes the popup form.",
+	"extendedinputbox-default-pagename": "Default target page name, used when no \"page=\" parameter and no field value can be resolved.",
+	"extendedinputbox-default-username": "Fallback value for the {{USER}}/{{REVISIONUSER}} magic words when no user is logged in.",
+	"extendedinputbox-error-unresolved-title": "Error shown when the generated page title still contains unresolved template braces. Parameters:\n* $1 - the generated (invalid) title",
+	"extendedinputbox-error-preload-fetch": "Error shown when the preload template could not be fetched during a skip-edit publication. Parameters:\n* $1 - the preload template title that failed to load",
+	"extendedinputbox-error-publish": "Error shown when the MediaWiki API returns an error while publishing a page via skip-edit. Parameters:\n* $1 - the API error message",
+	"extendedinputbox-error-popup-preload-deprecated": "Error shown when the deprecated \"popup-preload\" parameter is used in an <inputbox> configuration.",
+	"extendedinputbox-error-invalid-bgcolor": "Error shown when \"button-bgcolor\" is not a valid CSS color.",
+	"extendedinputbox-error-invalid-bordercolor": "Error shown when \"button-border-color\" is not a valid CSS color.",
+	"extendedinputbox-required-marker": "Short marker appended to a field's label when it is required (\"required=yes\" on \"popup-field\"). Kept as a separate message so it can be adapted per language/theme if needed.",
+	"extendedinputbox-error-field-required": "Error shown when a required field (\"required=yes\" on \"popup-field\") is left empty at submission time. Parameters:\n* $1 - the field's label",
+	"extendedinputbox-error-field-minlength": "Error shown when a field's value is shorter than its configured \"minlength\". Parameters:\n* $1 - the field's label\n* $2 - the configured minimum length",
+	"extendedinputbox-error-field-maxlength": "Error shown when a field's value exceeds its configured \"maxlength\" (safety-net check; the input itself is already capped via OOUI's native maxLength). Parameters:\n* $1 - the field's label\n* $2 - the configured maximum length"
+}
