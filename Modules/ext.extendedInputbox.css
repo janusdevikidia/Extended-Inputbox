@@ -1,8 +1,6 @@
 .ei-loading-block {
     pointer-events: none;
 }
-<<<<<<< HEAD
-=======
 
 /* Auparavant posé en inline style (avec !important) à la fois côté PHP
  * (ExtendedInputboxHooks::appendErrorNode) et côté JS (fallback.js,
@@ -14,4 +12,3 @@
     margin-top: 8px;
     font-size: 0.9em;
 }
->>>>>>> dev

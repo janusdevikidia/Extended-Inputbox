@@ -2,7 +2,6 @@
 ( function ( $, mw ) {
 	'use strict';
 
-<<<<<<< HEAD
 	// Portée réelle de ce module en v2 (voir ExtendedInputboxHooks::onBeforePageDisplay
 	// et ::onOutputPageBeforeHTML) :
 	//  - Au chargement initial d'une page déjà traitée côté serveur
@@ -44,31 +43,6 @@
 		wikitext = wikitext.replace( /<nowiki\s*\/?>[\s\S]*?(?:<\/nowiki>|$)/gi, '' );
 		wikitext = wikitext.replace( /<pre\b[^>]*>[\s\S]*?(?:<\/pre>|$)/gi, '' );
 		return wikitext;
-=======
-	// Ce module est très léger et toujours chargé (pas de dépendance OOUI).
-	// Sur un chargement de page normal, ExtendedInputboxHooks::onOutputPageBeforeHTML
-	// a déjà tout réglé côté serveur : les formulaires concernés ont un
-	// attribut data-eib-index et n'ont pas besoin d'être retraités ici.
-	//
-	// Ce module ne sert que de filet de sécurité pour du contenu injecté
-	// DYNAMIQUEMENT après le rendu initial (prévisualisation live, aperçu
-	// VisualEditor...), où le hook serveur n'a pas pu s'appliquer. Dans ce
-	// cas seulement, on retombe sur l'ancienne méthode (appel API) et on
-	// charge OOUI à la demande, uniquement si une popup est réellement trouvée.
-
-	var api = new mw.Api();
-	var configCache = null; // { key: string, promise: jQuery.Promise }
-
-	function isValidCssColor( val ) {
-		if ( !val ) { return false; }
-		val = val.trim();
-		return (
-			/^#[0-9a-fA-F]{3,8}$/.test( val ) ||
-			/^rgba?\(\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*(,\s*[\d.]+\s*)?\)$/.test( val ) ||
-			/^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(,\s*[\d.]+\s*)?\)$/.test( val ) ||
-			/^[a-zA-Z]{3,20}$/.test( val )
-		);
->>>>>>> origin/main
 	}
 
 	function getConfigsForCurrentPage() {
@@ -77,12 +51,8 @@
 			return configCache.promise;
 		}
 
-<<<<<<< HEAD
 		var promise = mw.loader.using( 'mediawiki.api' ).then( function () {
 			api = api || new mw.Api();
-=======
-		var promise = mw.loader.using( [ 'mediawiki.api' ] ).then( function () {
->>>>>>> origin/main
 			return api.get( {
 				action: 'query',
 				prop: 'revisions',
@@ -111,10 +81,7 @@
 			}
 
 			var wikitext = expData.expandtemplates.wikitext;
-<<<<<<< HEAD
 			wikitext = stripNonRenderedRegions( wikitext );
-=======
->>>>>>> origin/main
 			var inputboxRegex = /<inputbox>([\s\S]*?)<\/inputbox>/gi;
 			var configs = [];
 			var match;
@@ -123,15 +90,7 @@
 				configs.push( parseConfig( match[1] ) );
 			}
 
-<<<<<<< HEAD
 			return { configs: configs };
-=======
-			var extendedConfigs = configs.filter( function ( c ) {
-				return c.title || c.fields.length > 0 || c.preloadParams || c.skipEdit || c.buttonBgColor || c.buttonBorderColor || c.errors.length > 0;
-			} );
-
-			return { configs: configs, extendedConfigs: extendedConfigs };
->>>>>>> origin/main
 		} );
 
 		configCache = { key: cacheKey, promise: promise };
@@ -148,21 +107,14 @@
 		if ( !$content.is( '#mw-content-text' ) && !$content.closest( '#mw-content-text' ).length ) {
 			return;
 		}
-<<<<<<< HEAD
 		if ( skipInitialServerProcessedContent ) {
 			skipInitialServerProcessedContent = false;
 			return;
 		}
-=======
->>>>>>> origin/main
 
 		var $forms = [];
 		$content.find( '.mw-inputbox-centered, .mw-inputbox-container, form.createbox' ).each( function () {
 			var $f = $( this ).is( 'form' ) ? $( this ) : $( this ).find( 'form' );
-<<<<<<< HEAD
-=======
-			// Déjà traité côté serveur (rendu normal, pas une prévisualisation) : on ignore.
->>>>>>> origin/main
 			if ( $f.length && $f.attr( 'data-eib-index' ) !== undefined ) {
 				return;
 			}
@@ -174,19 +126,11 @@
 		if ( !$forms.length ) { return; }
 
 		getConfigsForCurrentPage().done( function ( result ) {
-<<<<<<< HEAD
-=======
-			var extendedConfigs = result.extendedConfigs;
->>>>>>> origin/main
 			var configs = result.configs;
 
 			$.each( $forms, function ( index, formEl ) {
 				var $form = $( formEl );
-<<<<<<< HEAD
 				var config = findMatchingConfig( $form, configs, index );
-=======
-				var config = findMatchingConfig( $form, extendedConfigs, configs, index );
->>>>>>> origin/main
 				if ( !config ) { return; }
 
 				var $container = $form.closest( '.mw-inputbox-centered, .mw-inputbox-container' );
@@ -197,10 +141,6 @@
 					$target.find( '.extended-inputbox-error' ).remove();
 					var $errContainer = $( '<div>' )
 						.addClass( 'extended-inputbox-error' )
-<<<<<<< HEAD
-=======
-						.css( { 'color': '#d33', 'font-weight': 'bold', 'margin-top': '8px', 'font-size': '0.9em' } )
->>>>>>> origin/main
 						.text( config.errors.join( ' ' ) );
 					$target.append( $errContainer );
 				}
@@ -209,11 +149,6 @@
 
 				if ( !config.title && !config.fields.length ) { return; }
 
-<<<<<<< HEAD
-=======
-				// OOUI n'est chargé ici QUE parce qu'on vient de détecter une
-				// vraie popup sur ce contenu dynamique précis.
->>>>>>> origin/main
 				$form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
 					e.preventDefault();
 					mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'oojs-ui-windows', 'mediawiki.util' ], function () {
@@ -268,18 +203,12 @@
 		$btn.addClass( btnClass );
 	}
 
-<<<<<<< HEAD
 	function findMatchingConfig( $form, configs, fallbackIndex ) {
 		if ( !configs || !configs.length ) { return null; }
-=======
-	function findMatchingConfig( $form, extendedConfigs, allConfigs, fallbackIndex ) {
-		if ( !extendedConfigs.length ) { return null; }
->>>>>>> origin/main
 
 		var btnText = $form.find( 'input[type="submit"], button[type="submit"]' ).val() || '';
 		var formPreload = $form.find( 'input[name="preload"]' ).val() || '';
 
-<<<<<<< HEAD
 		// Si plusieurs <inputbox> de la page partagent le même buttonlabel (cas
 		// fréquent quand une page réutilise un modèle), un match par libellé
 		// n'est fiable QUE s'il est unique : sinon on associerait arbitrairement
@@ -306,23 +235,6 @@
 
 	function parseConfig( rawText ) {
 		var config = { fields: [], rawParams: {}, errors: [], requiredMarker: null };
-=======
-		for ( var i = 0; i < extendedConfigs.length; i++ ) {
-			var c = extendedConfigs[i];
-			if ( c.rawParams.buttonlabel && c.rawParams.buttonlabel.trim() === btnText.trim() ) {
-				return c;
-			}
-			if ( formPreload && ( c.preload === formPreload || c.rawParams.preload === formPreload ) ) {
-				return c;
-			}
-		}
-
-		return extendedConfigs[ fallbackIndex ] || allConfigs[ fallbackIndex ] || null;
-	}
-
-	function parseConfig( rawText ) {
-		var config = { fields: [], rawParams: {}, errors: [] };
->>>>>>> origin/main
 		var lines = rawText.split( '\n' );
 
 		lines.forEach( function ( line ) {
@@ -330,13 +242,10 @@
 			if ( !line || line.indexOf( '<!--' ) === 0 ) { return; }
 
 			var eqIdx = line.indexOf( '=' );
-<<<<<<< HEAD
 			// Bug corrigé : "!eqIdx" était vrai aussi pour eqIdx === 0 (ligne
 			// commençant par "="), ce qui ignorait silencieusement cette ligne
 			// alors que ExtendedInputboxConfig::parseSingleConfig() (PHP) ne
 			// teste que "$eqIdx === false". Les deux miroirs divergeaient.
-=======
->>>>>>> origin/main
 			if ( eqIdx === -1 ) { return; }
 
 			var key = line.substring( 0, eqIdx ).trim().toLowerCase();
@@ -347,39 +256,27 @@
 			} else if ( key === 'preload' ) {
 				config.preload = val;
 			} else if ( key === 'popup-preload' ) {
-<<<<<<< HEAD
 				config.errors.push( mw.msg( 'extendedinputbox-error-popup-preload-deprecated' ) );
-=======
-				config.errors.push( 'Erreur : le paramètre "popup-preload" n\'est plus supporté. Veuillez utiliser juste "preload".' );
->>>>>>> origin/main
 			} else if ( key === 'popup-title' ) {
 				config.title = val;
 			} else if ( key === 'popup-text' ) {
 				config.text = val;
-<<<<<<< HEAD
 			} else if ( key === 'popup-required-marker' || key === 'required-marker' ) {
 				// null signifie « utiliser le message i18n » ; une chaîne vide masque
 				// volontairement le marqueur visuel.
 				config.requiredMarker = val;
-=======
->>>>>>> origin/main
 			} else if ( key === 'popup-skip-edit' || key === 'skip-edit' ) {
 				config.skipEdit = ( val.toLowerCase() === 'yes' );
 			} else if ( key === 'button-bgcolor' || key === 'button-bg' ) {
 				if ( isValidCssColor( val ) ) {
 					config.buttonBgColor = val;
 				} else {
-<<<<<<< HEAD
 					config.errors.push( mw.msg( 'extendedinputbox-error-invalid-bgcolor' ) );
-=======
-					config.errors.push( 'Erreur : la valeur de "button-bgcolor" n\'est pas une couleur CSS valide.' );
->>>>>>> origin/main
 				}
 			} else if ( key === 'button-border-color' || key === 'button-border' ) {
 				if ( isValidCssColor( val ) ) {
 					config.buttonBorderColor = val;
 				} else {
-<<<<<<< HEAD
 					config.errors.push( mw.msg( 'extendedinputbox-error-invalid-bordercolor' ) );
 				}
 			} else if ( key === 'popup-field' ) {
@@ -396,19 +293,11 @@
 					if ( isDuplicateName ) {
 						config.errors.push( mw.msg( 'extendedinputbox-error-duplicate-field', parts[0] ) );
 					}
-=======
-					config.errors.push( 'Erreur : la valeur de "button-border-color" n\'est pas une couleur CSS valide.' );
-				}
-			} else if ( key === 'popup-field' ) {
-				var parts = val.split( '|' ).map( function ( s ) { return s.trim(); } );
-				if ( parts.length >= 3 ) {
->>>>>>> origin/main
 					config.fields.push( {
 						name: parts[0],
 						type: parts[1],
 						label: parts[2],
 						options: parts[3] || '',
-<<<<<<< HEAD
 						showIf: parts[4] || '',
 						default: parts[5] || '',
 						separator: parts[6] || ', ',
@@ -417,9 +306,6 @@
 						maxlength: ( /^\d+$/.test( maxlengthRaw ) ) ? parseInt( maxlengthRaw, 10 ) : null,
 						minlength: ( /^\d+$/.test( minlengthRaw ) ) ? parseInt( minlengthRaw, 10 ) : null,
 						help: parts[11] || ''
-=======
-						showIf: parts[4] || ''
->>>>>>> origin/main
 					} );
 				}
 			} else {

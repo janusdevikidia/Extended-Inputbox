@@ -6,7 +6,6 @@
 	// que si la page contient au moins une popup. Les configs sont déjà
 	// parsées côté serveur et transmises ici, donc plus AUCUN appel API
 	// (query + expandtemplates) n'est nécessaire pour le cas normal.
-<<<<<<< HEAD
 	//
 	// L'instance mw.Api() n'est créée qu'à la première utilisation réelle
 	// (ouverture d'un dialogue en skip-edit) : une page avec une popup que
@@ -35,17 +34,6 @@
 	// $content est l'élément réellement mis à jour par ce déclenchement du hook
 	// (pas forcément toute la page) : .find() ci-dessous reste donc scopé à ce
 	// sous-arbre et ne reparcourt jamais tout #mw-content-text inutilement.
-=======
-	var api = new mw.Api();
-	var configs = mw.config.get( 'extendedInputboxConfigs' ) || {};
-
-	// Permet au module fallback (contenu dynamique, sans data-eib-index) de
-	// déclencher l'ouverture du dialogue après avoir chargé ce module à la demande.
-	mw.hook( 'extendedInputbox.openDialog' ).add( function ( config, $form, apiInstance ) {
-		openExtendedDialog( config, $form, apiInstance || api );
-	} );
-
->>>>>>> origin/main
 	mw.hook( 'wikipage.content' ).add( function ( $content ) {
 		if ( !$content.is( '#mw-content-text' ) && !$content.closest( '#mw-content-text' ).length ) {
 			return;
@@ -66,11 +54,7 @@
 
 			$form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
 				e.preventDefault();
-<<<<<<< HEAD
 				openExtendedDialog( config, $form, getApi() );
-=======
-				openExtendedDialog( config, $form, api );
->>>>>>> origin/main
 			} );
 		} );
 	} );
@@ -83,7 +67,6 @@
 		return Math.ceil( ( ( ( date - yearStart ) / 86400000 ) + 1 ) / 7 );
 	}
 
-<<<<<<< HEAD
 	// Construit les 7 valeurs (année/mois/jour/heure/minute/seconde/semaine
 	// ISO) pour un Date donné, en lisant systématiquement ses champs UTC.
 	// Pour CURRENT*, on appelle ceci avec "new Date()" telle quelle (heure
@@ -92,12 +75,6 @@
 	// alors à lire l'heure du fuseau du wiki, sans jamais dépendre du fuseau
 	// du navigateur de l'utilisateur (qui n'a rien à voir avec $wgLocaltimezone).
 	function buildTimeParts( d ) {
-=======
-	function processMagicWords( text ) {
-		if ( !text ) { return ''; }
-
-		var d = new Date();
->>>>>>> origin/main
 		var pad = function ( n ) { return n < 10 ? '0' + n : '' + n; };
 
 		var year = d.getUTCFullYear().toString();
@@ -108,7 +85,6 @@
 		var seconds = pad( d.getUTCSeconds() );
 		var week = getISOWeek( d ).toString();
 
-<<<<<<< HEAD
 		return {
 			timestamp: year + month + day + hours + minutes + seconds,
 			time: hours + ':' + minutes,
@@ -149,26 +125,6 @@
 			'CURRENTTIME': current.time,
 			'LOCALWEEK': local.week,
 			'CURRENTWEEK': current.week,
-=======
-		var timestamp = year + month + day + hours + minutes + seconds;
-		var timeStr = hours + ':' + minutes;
-		var userName = mw.config.get( 'wgUserName' ) || 'Anonyme';
-		var pageName = mw.config.get( 'wgPageName' ) || '';
-
-		var magicMap = {
-			'LOCALTIMESTAMP': timestamp,
-			'CURRENTTIMESTAMP': timestamp,
-			'LOCALYEAR': year,
-			'CURRENTYEAR': year,
-			'LOCALMONTH': month,
-			'CURRENTMONTH': month,
-			'LOCALDAY': day,
-			'CURRENTDAY': day,
-			'LOCALTIME': timeStr,
-			'CURRENTTIME': timeStr,
-			'LOCALWEEK': week,
-			'CURRENTWEEK': week,
->>>>>>> origin/main
 			'USER': userName,
 			'REVISIONUSER': userName,
 			'PAGENAME': pageName,
@@ -231,7 +187,6 @@
 		return result;
 	}
 
-<<<<<<< HEAD
 	// Options OOUI natives communes aux champs texte libre (text/textarea) :
 	// placeholder et maxlength sont supportés directement par TextInputWidget
 	// (et donc par MultilineTextInputWidget, qui en hérite). minlength n'a pas
@@ -298,8 +253,6 @@
 		return sharedWindowManager;
 	}
 
-=======
->>>>>>> origin/main
 	function openExtendedDialog( config, $form, api ) {
 		function ExtendedDialog( config ) {
 			ExtendedDialog.super.call( this, config );
@@ -307,17 +260,10 @@
 		OO.inheritClass( ExtendedDialog, OO.ui.ProcessDialog );
 
 		ExtendedDialog.static.name = 'extendedInputboxDialog';
-<<<<<<< HEAD
 		ExtendedDialog.static.title = config.title || mw.msg( 'extendedinputbox-default-title' );
 		ExtendedDialog.static.actions = [
 			{ action: 'save', label: mw.msg( 'extendedinputbox-btn-save' ), flags: [ 'primary', 'progressive' ] },
 			{ label: mw.msg( 'extendedinputbox-btn-cancel' ), flags: 'safe' }
-=======
-		ExtendedDialog.static.title = config.title || 'Formulaire';
-		ExtendedDialog.static.actions = [
-			{ action: 'save', label: 'Valider', flags: [ 'primary', 'progressive' ] },
-			{ label: 'Annuler', flags: 'safe' }
->>>>>>> origin/main
 		];
 
 		ExtendedDialog.prototype.initialize = function () {
@@ -332,37 +278,25 @@
 			}
 
 			config.fields.forEach( function ( field ) {
-<<<<<<< HEAD
 				// "default" (nouveau) a priorité sur "options" comme valeur initiale ;
 				// "options" reste utilisé tel quel pour les listes select/radio/checkbox,
 				// et continue de servir de valeur initiale pour text/textarea si aucun
 				// "default" explicite n'est fourni (compatibilité ascendante).
-=======
->>>>>>> origin/main
 				var widget;
 				if ( field.type === 'select' ) {
 					var opts = field.options.split( ',' ).map( function ( o ) {
 						var v = o.trim(); return { data: v, label: v };
 					} );
-<<<<<<< HEAD
 					widget = new OO.ui.DropdownInputWidget( { options: opts, value: field.default || undefined } );
-=======
-					widget = new OO.ui.DropdownInputWidget( { options: opts } );
->>>>>>> origin/main
 				} else if ( field.type === 'radio' ) {
 					var opts = field.options.split( ',' ).map( function ( o ) {
 						var v = o.trim(); return { data: v, label: v };
 					} );
-<<<<<<< HEAD
 					widget = new OO.ui.RadioSelectInputWidget( { options: opts, value: field.default || undefined } );
-=======
-					widget = new OO.ui.RadioSelectInputWidget( { options: opts } );
->>>>>>> origin/main
 				} else if ( field.type === 'checkbox' || field.type === 'checkboxes' ) {
 					var opts = field.options ? field.options.split( ',' ).map( function ( o ) {
 						var v = o.trim(); return { data: v, label: v };
 					} ) : [];
-<<<<<<< HEAD
 					var defaultVals = field.default ? field.default.split( ',' ).map( function ( v ) { return v.trim(); } ) : [];
 					widget = new OO.ui.CheckboxMultiselectInputWidget( { options: opts, value: defaultVals } );
 				} else if ( field.type === 'textarea' ) {
@@ -395,26 +329,12 @@
 					layoutConfig.helpInline = true;
 				}
 				var layout = new OO.ui.FieldLayout( widget, layoutConfig );
-=======
-					widget = new OO.ui.CheckboxMultiselectInputWidget( { options: opts } );
-				} else if ( field.type === 'textarea' ) {
-					widget = new OO.ui.MultilineTextInputWidget( { value: field.options } );
-				} else {
-					widget = new OO.ui.TextInputWidget( { value: field.options } );
-				}
-
-				var layout = new OO.ui.FieldLayout( widget, {
-					label: field.label,
-					align: 'top'
-				} );
->>>>>>> origin/main
 
 				dialog.widgets[ field.name ] = widget;
 				dialog.fieldLayouts[ field.name ] = layout;
 				dialog.content.$element.append( layout.$element );
 			} );
 
-<<<<<<< HEAD
 			// Syntaxe formelle de show-if : "show-if:condition"
 			//   condition  := orBranch (',' orBranch)*      -- OR, priorité la plus basse
 			//   orBranch   := andCond (('&') andCond)*       -- AND, priorité plus haute
@@ -432,8 +352,6 @@
 			// stabilisation à 10 passes (updateAllVisibilities) sert de filet de
 			// sécurité, mais un cycle véritable peut ne pas converger vers un état
 			// stable en 10 passes ; à éviter dans la configuration <inputbox>.
-=======
->>>>>>> origin/main
 			function checkSingleCondition( condStr ) {
 				var eqIdx = condStr.indexOf( '=' );
 				if ( eqIdx === -1 ) { return false; }
@@ -500,7 +418,6 @@
 			this.$body.append( this.content.$element );
 		};
 
-<<<<<<< HEAD
 		// NB : OO.ui.ProcessDialog gère nativement l'état de chargement et le
 		// verrouillage anti-double-soumission pendant l'exécution d'un
 		// OO.ui.Process : Dialog#executeAction appelle pushPending() (qui
@@ -509,13 +426,10 @@
 		// résolu/rejeté. Un second clic sur "Valider" pendant l'appel API
 		// (skip-edit) est donc déjà sans effet ; inutile de dupliquer ce
 		// verrouillage manuellement ici.
-=======
->>>>>>> origin/main
 		ExtendedDialog.prototype.getActionProcess = function ( action ) {
 			var dialog = this;
 			if ( action === 'save' ) {
 				return new OO.ui.Process( function () {
-<<<<<<< HEAD
 					// Validation required/minlength/maxlength AVANT tout traitement
 					// (préchargement, magic words, appel API...) : une violation
 					// bloque immédiatement la publication et affiche l'erreur dans
@@ -525,18 +439,12 @@
 						return $.Deferred().reject( new OO.ui.Error( validationError ) );
 					}
 
-=======
->>>>>>> origin/main
 					var formData = {};
 					config.fields.forEach( function ( field ) {
 						if ( dialog.fieldLayouts[ field.name ].isVisible() ) {
 							var rawVal = dialog.widgets[ field.name ].getValue();
-<<<<<<< HEAD
 							var separator = field.separator || ', ';
 							formData[ field.name ] = Array.isArray( rawVal ) ? rawVal.join( separator ) : ( rawVal || '' );
-=======
-							formData[ field.name ] = Array.isArray( rawVal ) ? rawVal.join( ', ' ) : ( rawVal || '' );
->>>>>>> origin/main
 						} else {
 							formData[ field.name ] = '';
 						}
@@ -554,11 +462,7 @@
 					var paramOrder = config.preloadParams || config.fields.map( function ( f ) { return f.name; } );
 
 					var prefix = config.rawParams.prefix || urlParams.prefix || '';
-<<<<<<< HEAD
 					var rawTargetPage = config.rawParams.page || urlParams.page || urlParams.title || getParamValue( paramOrder[0], 0, formData, config.fields ) || mw.msg( 'extendedinputbox-default-pagename' );
-=======
-					var rawTargetPage = config.rawParams.page || urlParams.page || urlParams.title || getParamValue( paramOrder[0], 0, formData, config.fields ) || 'Nouvelle page';
->>>>>>> origin/main
 					var targetPage = processMagicWords( rawTargetPage );
 					targetPage = replaceVariables( targetPage, paramOrder, formData, config.fields );
 
@@ -568,12 +472,7 @@
 
 					if ( /\{\{|\}\}/.test( targetPage ) ) {
 						return $.Deferred().reject( new OO.ui.Error(
-<<<<<<< HEAD
 							mw.msg( 'extendedinputbox-error-unresolved-title', targetPage )
-=======
-							'Le titre de page généré contient des accolades non résolues : ' + targetPage +
-							'. Vérifiez le paramètre "page=" de la configuration <inputbox>.'
->>>>>>> origin/main
 						) );
 					}
 
@@ -594,13 +493,10 @@
 						var fetchPreload = $.Deferred();
 
 						if ( preloadTemplate ) {
-<<<<<<< HEAD
 							// Si un preload est configuré, son absence ou l'échec de l'API
 							// NE DOIT PAS aboutir à une publication avec un contenu vide :
 							// on rejette explicitement pour bloquer la publication et
 							// informer l'utilisateur, plutôt que de continuer silencieusement.
-=======
->>>>>>> origin/main
 							api.get( {
 								action: 'query',
 								prop: 'revisions',
@@ -611,7 +507,6 @@
 								formatversion: 2
 							} ).done( function ( res ) {
 								var p = res && res.query && res.query.pages && res.query.pages[0];
-<<<<<<< HEAD
 								var content = ( p && !p.missing && p.revisions && p.revisions[0] ) ?
 									p.revisions[0].slots.main.content : null;
 								if ( content === null ) {
@@ -622,11 +517,6 @@
 							} ).fail( function () { fetchPreload.reject(); } );
 						} else {
 							// Pas de preload configuré : un contenu vide est le comportement attendu.
-=======
-								fetchPreload.resolve( ( p && p.revisions && p.revisions[0] ) ? p.revisions[0].slots.main.content : '' );
-							} ).fail( function () { fetchPreload.resolve( '' ); } );
-						} else {
->>>>>>> origin/main
 							fetchPreload.resolve( '' );
 						}
 
@@ -661,7 +551,6 @@
 								window.location.href = mw.util.getUrl( targetPage );
 							}, function ( code, data ) {
 								var errorMsg = ( data && data.error && data.error.info ) ? data.error.info : code;
-<<<<<<< HEAD
 								return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-publish', errorMsg ) ) );
 							} );
 						}, function () {
@@ -669,10 +558,6 @@
 							// et on affiche l'erreur dans la popup, plutôt que de publier
 							// une page vide (voir commentaire plus haut).
 							return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-preload-fetch', preloadTemplate ) ) );
-=======
-								return $.Deferred().reject( new OO.ui.Error( 'Erreur lors de la publication : ' + errorMsg ) );
-							} );
->>>>>>> origin/main
 						} );
 					}
 
@@ -711,32 +596,19 @@
 			return ExtendedDialog.super.prototype.getActionProcess.call( this, action );
 		};
 
-<<<<<<< HEAD
 		var windowManager = getSharedWindowManager();
-=======
-		var windowManager = new OO.ui.WindowManager();
-		$( 'body' ).append( windowManager.$element );
->>>>>>> origin/main
 		var dialog = new ExtendedDialog( { size: 'medium' } );
 		windowManager.addWindows( [ dialog ] );
 		var openedWindow = windowManager.openWindow( dialog );
 
 		openedWindow.closed.then( function () {
-<<<<<<< HEAD
 			// On retire uniquement CETTE fenêtre (par son nom statique) du
 			// gestionnaire partagé, sans jamais appeler destroy() dessus :
 			// le WindowManager doit survivre à la fermeture pour servir à
 			// la prochaine ouverture (voir getSharedWindowManager).
 			windowManager.removeWindows( [ ExtendedDialog.static.name ] );
-=======
-			windowManager.destroy();
->>>>>>> origin/main
 		} );
 	}
 
 } )( jQuery, mediaWiki );
-<<<<<<< HEAD
 // </nowiki>
-=======
-// </nowiki>
->>>>>>> origin/main
