@@ -4,5 +4,25 @@
 			"Célian & Janus"
 		]
 	},
+<<<<<<< HEAD
 	"extendedinputbox-desc": "Ajoute des formulaires avancés en boîte de dialogue par-dessus InputBox"
+=======
+	"extendedinputbox-desc": "Ajoute des formulaires avancés en boîte de dialogue par-dessus InputBox",
+	"extendedinputbox-default-title": "Formulaire",
+	"extendedinputbox-btn-save": "Valider",
+	"extendedinputbox-btn-cancel": "Annuler",
+	"extendedinputbox-default-pagename": "Nouvelle page",
+	"extendedinputbox-default-username": "Anonyme",
+	"extendedinputbox-error-unresolved-title": "Le titre de page généré contient des accolades non résolues : $1. Vérifiez le paramètre « page= » de la configuration <inputbox>.",
+	"extendedinputbox-error-preload-fetch": "Impossible de récupérer le modèle de préchargement « $1 ». La page n'a pas été publiée. Vérifiez que ce modèle existe et réessayez.",
+	"extendedinputbox-error-publish": "Erreur lors de la publication : $1",
+	"extendedinputbox-error-popup-preload-deprecated": "Erreur : le paramètre « popup-preload » n'est plus supporté. Veuillez utiliser juste « preload ».",
+	"extendedinputbox-error-invalid-bgcolor": "Erreur : la valeur de « button-bgcolor » n'est pas une couleur CSS valide.",
+	"extendedinputbox-error-invalid-bordercolor": "Erreur : la valeur de « button-border-color » n'est pas une couleur CSS valide.",
+	"extendedinputbox-error-duplicate-field": "Erreur : le nom de champ « $1 » est utilisé plusieurs fois dans ce formulaire.",
+	"extendedinputbox-required-marker": "*",
+	"extendedinputbox-error-field-required": "Le champ « $1 » est obligatoire.",
+	"extendedinputbox-error-field-minlength": "Le champ « $1 » doit contenir au moins $2 caractères.",
+	"extendedinputbox-error-field-maxlength": "Le champ « $1 » ne doit pas dépasser $2 caractères."
+>>>>>>> dev
 }
