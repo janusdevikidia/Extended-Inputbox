@@ -4,9 +4,6 @@
 			"Célian & Janus"
 		]
 	},
-<<<<<<< HEAD
-	"extendedinputbox-desc": "Adds advanced dialog-based forms on top of InputBox"
-=======
 	"extendedinputbox-desc": "Adds advanced dialog-based forms on top of InputBox",
 	"extendedinputbox-default-title": "Form",
 	"extendedinputbox-btn-save": "Submit",
@@ -24,5 +21,4 @@
 	"extendedinputbox-error-field-required": "The field \"$1\" is required.",
 	"extendedinputbox-error-field-minlength": "The field \"$1\" must contain at least $2 characters.",
 	"extendedinputbox-error-field-maxlength": "The field \"$1\" must not exceed $2 characters."
->>>>>>> dev
 }

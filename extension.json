@@ -1,72 +1,31 @@
 {
     "name": "Extended-Inputbox",
-<<<<<<< HEAD
-<<<<<<< HEAD
-    "version": "1.0.1",
-=======
     "version": "2.0.0",
->>>>>>> dev
-=======
-    "version": "2.0.0",
->>>>>>> origin/main
     "author": "Célian & Janus",
     "type": "other",
     "manifest_version": 2,
     "requires": {
         "extensions": {
             "InputBox": "*"
-<<<<<<< HEAD
-<<<<<<< HEAD
-        }
-    },
-    "AutoloadClasses": {
-        "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php"
-=======
         },
         "MediaWiki": ">= 1.39.0"
     },
     "AutoloadClasses": {
         "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php",
         "ExtendedInputboxConfig": "includes/ExtendedInputboxConfig.php"
->>>>>>> dev
-=======
-        },
-        "MediaWiki": ">= 1.39.0"
-    },
-    "AutoloadClasses": {
-        "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php",
-        "ExtendedInputboxConfig": "includes/ExtendedInputboxConfig.php"
->>>>>>> origin/main
     },
     "ResourceFileModulePaths": {
         "localBasePath": "",
         "remoteExtPath": "Extended-Inputbox"
     },
     "ResourceModules": {
-<<<<<<< HEAD
-<<<<<<< HEAD
-        "ext.extendedInputbox": {
-            "scripts": [
-                "Modules/ext.extendedInputbox.js"
-=======
         "ext.extendedInputbox.fallback": {
             "scripts": [
                 "Modules/ext.extendedInputbox.fallback.js"
->>>>>>> dev
-=======
-        "ext.extendedInputbox.fallback": {
-            "scripts": [
-                "Modules/ext.extendedInputbox.fallback.js"
->>>>>>> origin/main
             ],
             "styles": [
                 "Modules/ext.extendedInputbox.css"
             ],
-<<<<<<< HEAD
-            "dependencies": [
-                "mediawiki.api",
-                "mediawiki.util"
-=======
             "messages": [
                 "extendedinputbox-error-popup-preload-deprecated",
                 "extendedinputbox-error-invalid-bgcolor",
@@ -98,34 +57,12 @@
                 "extendedinputbox-error-field-required",
                 "extendedinputbox-error-field-minlength",
                 "extendedinputbox-error-field-maxlength"
->>>>>>> dev
-            ]
-        },
-        "ext.extendedInputbox.popup": {
-            "scripts": [
-                "Modules/ext.extendedInputbox.popup.js"
-            ],
-            "dependencies": [
-                "oojs-ui-core",
-                "oojs-ui-widgets",
-                "oojs-ui-windows",
-                "mediawiki.api",
-                "mediawiki.util"
             ]
         }
     },
     "Hooks": {
-<<<<<<< HEAD
-<<<<<<< HEAD
-        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay"
-=======
         "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay",
         "OutputPageBeforeHTML": "ExtendedInputboxHooks::onOutputPageBeforeHTML"
->>>>>>> dev
-=======
-        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay",
-        "OutputPageBeforeHTML": "ExtendedInputboxHooks::onOutputPageBeforeHTML"
->>>>>>> origin/main
     },
     "MessagesDirs": {
         "ExtendedInputbox": [

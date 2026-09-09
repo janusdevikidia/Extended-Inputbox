@@ -1,27 +1,3 @@
-<<<<<<< HEAD
-# Extended Inputbox (Extension MediaWiki)
-
-**Extended Inputbox** est une extension pour MediaWiki qui améliore l'extension `InputBox`. Elle permet de créer des boîtes de dialogue (OOUI) et collecter des informations supplémentaires avant la création ou la modification d'une page.
-
----
-
-##  Prérequis
-
-* MediaWiki 1.39 ou supérieur
-* Extension [InputBox](https://www.mediawiki.org/wiki/Extension:InputBox) installée et activée
-
----
-
-## Installation
-
-1. Téléchargez ou clonez ce dépôt dans le dossier `extensions/` de votre installation MediaWiki :
-   ```bash
-   cd extensions/
-   git clone https://github.com/Janusdevikidia/Extended-Inputbox.git
-
->  [!NOTE]
-> La documentation est disponible : [Aide:Extended-Inputbox](https://fr.vikidia.org/wiki/Aide:Extended-Inputbox) sur Vikidia
-=======
 # Extended Inputbox
 
 Extension MediaWiki qui ajoute des formulaires en fenêtre modale aux balises
@@ -236,4 +212,3 @@ modèles, ainsi que les pages comportant plusieurs InputBox : la correspondance
 est faite dans leur ordre d’apparition.
 
 [InputBox]: https://www.mediawiki.org/wiki/Extension:InputBox
->>>>>>> dev

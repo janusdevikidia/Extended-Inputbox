@@ -4,9 +4,6 @@
 			"Célian & Janus"
 		]
 	},
-<<<<<<< HEAD
-	"extendedinputbox-desc": "Ajoute des formulaires avancés en boîte de dialogue par-dessus InputBox"
-=======
 	"extendedinputbox-desc": "Ajoute des formulaires avancés en boîte de dialogue par-dessus InputBox",
 	"extendedinputbox-default-title": "Formulaire",
 	"extendedinputbox-btn-save": "Valider",
@@ -24,5 +21,4 @@
 	"extendedinputbox-error-field-required": "Le champ « $1 » est obligatoire.",
 	"extendedinputbox-error-field-minlength": "Le champ « $1 » doit contenir au moins $2 caractères.",
 	"extendedinputbox-error-field-maxlength": "Le champ « $1 » ne doit pas dépasser $2 caractères."
->>>>>>> dev
 }
