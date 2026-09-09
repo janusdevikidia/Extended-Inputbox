@@ -121,6 +121,24 @@
 		return CSS_COLOR_KEYWORDS.indexOf( lower ) !== -1;
 	}
 
+	// Retire du wikitexte tout ce qui n'est PAS réellement interprété comme
+	// un tag <inputbox> par le parseur : contenu de <nowiki>...</nowiki> et
+	// <pre>...</pre> (rendus tels quels, en texte), et commentaires HTML
+	// <!-- ... --> (jamais rendus). Miroir exact de
+	// ExtendedInputboxConfig::stripNonRenderedRegions() côté PHP.
+	//
+	// Sans ceci, un <inputbox> cité en exemple dans une page de documentation
+	// (entre balises <nowiki>) ou commenté serait quand même compté ici alors
+	// qu'il ne produit aucun formulaire réel dans la page — décalant
+	// l'appariement positionnel entre "configs" et "$forms" ci-dessous pour
+	// CET inputbox et tous ceux qui suivent.
+	function stripNonRenderedRegions( wikitext ) {
+		wikitext = wikitext.replace( /<!--[\s\S]*?-->/g, '' );
+		wikitext = wikitext.replace( /<nowiki\s*\/?>[\s\S]*?(?:<\/nowiki>|$)/gi, '' );
+		wikitext = wikitext.replace( /<pre\b[^>]*>[\s\S]*?(?:<\/pre>|$)/gi, '' );
+		return wikitext;
+	}
+
 	function getConfigsForCurrentPage() {
 		var cacheKey = mw.config.get( 'wgPageName' ) + ':' + mw.config.get( 'wgCurRevisionId' );
 		if ( configCache && configCache.key === cacheKey ) {
@@ -157,6 +175,7 @@
 			}
 
 			var wikitext = expData.expandtemplates.wikitext;
+			wikitext = stripNonRenderedRegions( wikitext );
 			var inputboxRegex = /<inputbox>([\s\S]*?)<\/inputbox>/gi;
 			var configs = [];
 			var match;

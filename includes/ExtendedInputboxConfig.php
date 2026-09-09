@@ -151,6 +151,29 @@ class ExtendedInputboxConfig {
 	}
 
 	/**
+	 * Retire du wikitexte tout ce qui n'est PAS réellement interprété comme
+	 * un tag <inputbox> par le parseur : contenu de <nowiki>...</nowiki> et
+	 * <pre>...</pre> (rendus tels quels, en texte, jamais comme un vrai
+	 * <inputbox>), et commentaires HTML <!-- ... --> (jamais rendus du tout).
+	 *
+	 * Sans ceci, un <inputbox> cité en exemple dans une page de documentation
+	 * (entre balises <nowiki>) ou temporairement commenté serait quand même
+	 * compté par extractConfigs() alors qu'il ne produit aucun conteneur dans
+	 * le HTML final — décalant l'appariement positionnel avec le DOM
+	 * (ExtendedInputboxHooks::bakeIntoHtml) pour CET inputbox et tous ceux
+	 * qui suivent sur la page.
+	 *
+	 * @param string $wikitext
+	 * @return string
+	 */
+	private static function stripNonRenderedRegions( $wikitext ) {
+		$wikitext = preg_replace( '/<!--[\s\S]*?-->/', '', $wikitext );
+		$wikitext = preg_replace( '/<nowiki\s*\/?>[\s\S]*?(<\/nowiki>|$)/i', '', $wikitext );
+		$wikitext = preg_replace( '/<pre\b[^>]*>[\s\S]*?(<\/pre>|$)/i', '', $wikitext );
+		return $wikitext;
+	}
+
+	/**
 	 * Extrait tous les blocs <inputbox>...</inputbox> d'un wikitexte déjà
 	 * "expandtemplates" (modèles développés), et retourne la liste ordonnée
 	 * des configs parsées (une par occurrence, dans l'ordre du wikitexte).
@@ -160,6 +183,7 @@ class ExtendedInputboxConfig {
 	 */
 	public static function extractConfigs( $wikitext ) {
 		$configs = [];
+		$wikitext = self::stripNonRenderedRegions( $wikitext );
 		if ( preg_match_all( '/<inputbox>([\s\S]*?)<\/inputbox>/i', $wikitext, $matches ) ) {
 			foreach ( $matches[1] as $rawText ) {
 				$configs[] = self::parseSingleConfig( $rawText );
