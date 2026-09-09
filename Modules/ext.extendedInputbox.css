@@ -1,3 +1,14 @@
 .ei-loading-block {
     pointer-events: none;
 }
+
+/* Auparavant posé en inline style (avec !important) à la fois côté PHP
+ * (ExtendedInputboxHooks::appendErrorNode) et côté JS (fallback.js,
+ * applyButtonStyle-like code) : centralisé ici pour permettre la
+ * surcharge par un skin ou par le mode sombre de MediaWiki. */
+.extended-inputbox-error {
+    color: #d33;
+    font-weight: bold;
+    margin-top: 8px;
+    font-size: 0.9em;
+}

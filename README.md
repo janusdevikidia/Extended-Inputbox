@@ -65,6 +65,26 @@ Dans le dernier champ, `show-if:categorie=Histoire` le rend visible seulement
 lorsque « Histoire » est sélectionné. `popup-text` est un texte d’introduction
 et doit être associé à `popup-title` ou à au moins un `popup-field`.
 
+## Exemple avec cases à cocher, contraintes et aide
+
+```wikitext
+<inputbox>
+type=create
+page=$1
+buttonlabel=Signaler un problème
+popup-title=Signaler un problème
+popup-field=titre|text|Titre du signalement|||||yes|Ex. : Lien mort|100|5|Soyez concis.
+popup-field=categories|checkbox|Catégories concernées|Contenu,Mise en forme,Source, |||;||non
+popup-field=details|textarea|Détails|||||non||1000
+</inputbox>
+```
+
+Ici, `categories` est une case à cocher multiple : les valeurs sélectionnées
+sont jointes avec le séparateur `;` (7ᵉ segment de `popup-field`) au lieu du
+`, ` par défaut. `titre` est obligatoire (`required=yes`), limité entre 5 et
+100 caractères, et affiche un texte d’indication (`placeholder`) ainsi qu’une
+bulle d’aide (`help`, dernier segment).
+
 ## Publication directe (sans écran d’édition)
 
 Ajoutez `popup-skip-edit=yes` pour publier à la validation de la fenêtre. Il
@@ -159,6 +179,15 @@ présente dans le rendu initial.
 Un petit module de secours reste chargé sur les pages contenant une InputBox :
 il couvre les formulaires ajoutés dynamiquement (prévisualisation, gadget,
 VisualEditor). Dans ce cas rare, il lit la configuration de la page via l’API.
+
+## Mots magiques dans `preload` et `default`
+
+Les mots magiques `{{CURRENTYEAR}}`, `{{CURRENTTIME}}`, etc. sont toujours
+exprimés en UTC, comme dans MediaWiki natif. Les variantes `{{LOCALYEAR}}`,
+`{{LOCALTIME}}`, etc. reflètent le fuseau horaire configuré par
+`$wgLocaltimezone` sur le wiki — pas le fuseau du navigateur de la personne
+qui remplit le formulaire. Si `$wgLocaltimezone` n’est pas défini (valeur par
+défaut UTC), `LOCAL*` et `CURRENT*` sont identiques.
 
 ## Mise à jour depuis la v1
 

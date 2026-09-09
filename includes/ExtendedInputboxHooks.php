@@ -389,7 +389,6 @@ class ExtendedInputboxHooks
 		}
 		$div = $dom->createElement('div', htmlspecialchars(implode(' ', $errors), ENT_QUOTES, 'UTF-8'));
 		$div->setAttribute('class', 'extended-inputbox-error');
-		$div->setAttribute('style', 'color:#d33;font-weight:bold;margin-top:8px;font-size:0.9em;');
 		$container->parentNode->insertBefore($div, $container->nextSibling);
 		return true;
 	}
