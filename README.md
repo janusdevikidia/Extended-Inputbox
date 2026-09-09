@@ -190,19 +190,6 @@ Un petit module de secours reste chargé sur les pages contenant une InputBox :
 il couvre les formulaires ajoutés dynamiquement (prévisualisation, gadget,
 VisualEditor). Dans ce cas rare, il lit la configuration de la page via l’API.
 
-## Tests
-
-Les règles de parsing et de validation des couleurs sont couvertes par des
-tests PHPUnit indépendants de MediaWiki. Depuis une installation disposant de
-PHPUnit :
-
-```sh
-phpunit -c phpunit.xml.dist
-```
-
-Les tests de rendu HTML et d’intégration doivent être exécutés dans
-l’environnement de test MediaWiki, car ils dépendent du parseur et de
-`OutputPage`.
 
 ## Mots magiques dans `preload` et `default`
 
