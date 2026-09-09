@@ -16,10 +16,17 @@
 	}
 	var configs = mw.config.get( 'extendedInputboxConfigs' ) || {};
 
-	// Permet au module fallback (contenu dynamique, sans data-eib-index) de
-	// déclencher l'ouverture du dialogue après avoir chargé ce module à la demande.
-	// Un seul WindowManager est partagé par toutes les ouvertures (voir plus bas),
-	// qu'elles proviennent de ce hook ou du binding natif sur wikipage.content.
+	// Décalage (en minutes) entre le fuseau horaire configuré côté serveur
+	// ($wgLocaltimezone, calculé dans ExtendedInputboxHooks::getLocalTimezoneOffsetMinutes)
+	// et UTC. Sert à distinguer LOCAL* (heure du wiki) de CURRENT* (toujours UTC),
+	// voir processMagicWords ci-dessous. Vaut 0 (donc LOCAL* === CURRENT*) si
+	// l'info n'a pas été transmise, par exemple si aucune config popup n'a pu
+	// déclencher son calcul côté serveur.
+	var localTZOffsetMinutes = mw.config.get( 'extendedInputboxLocalTZOffset' ) || 0;
+
+	// Un seul WindowManager est partagé par toutes les ouvertures (voir
+	// getSharedWindowManager plus bas), qu'elles proviennent de ce hook ou du
+	// binding natif sur wikipage.content.
 	mw.hook( 'extendedInputbox.openDialog' ).add( function ( config, $form, apiInstance ) {
 		openExtendedDialog( config, $form, apiInstance || getApi() );
 	} );
@@ -60,10 +67,14 @@
 		return Math.ceil( ( ( ( date - yearStart ) / 86400000 ) + 1 ) / 7 );
 	}
 
-	function processMagicWords( text ) {
-		if ( !text ) { return ''; }
-
-		var d = new Date();
+	// Construit les 7 valeurs (année/mois/jour/heure/minute/seconde/semaine
+	// ISO) pour un Date donné, en lisant systématiquement ses champs UTC.
+	// Pour CURRENT*, on appelle ceci avec "new Date()" telle quelle (heure
+	// UTC réelle). Pour LOCAL*, on appelle ceci avec une Date décalée de
+	// localTZOffsetMinutes (voir plus bas) : lire ses champs UTC revient
+	// alors à lire l'heure du fuseau du wiki, sans jamais dépendre du fuseau
+	// du navigateur de l'utilisateur (qui n'a rien à voir avec $wgLocaltimezone).
+	function buildTimeParts( d ) {
 		var pad = function ( n ) { return n < 10 ? '0' + n : '' + n; };
 
 		var year = d.getUTCFullYear().toString();
@@ -74,24 +85,46 @@
 		var seconds = pad( d.getUTCSeconds() );
 		var week = getISOWeek( d ).toString();
 
-		var timestamp = year + month + day + hours + minutes + seconds;
-		var timeStr = hours + ':' + minutes;
+		return {
+			timestamp: year + month + day + hours + minutes + seconds,
+			time: hours + ':' + minutes,
+			year: year,
+			month: month,
+			day: day,
+			week: week
+		};
+	}
+
+	function processMagicWords( text ) {
+		if ( !text ) { return ''; }
+
+		var now = new Date();
+		// CURRENT* : toujours UTC, comme côté MediaWiki (Help:Magic_words).
+		var current = buildTimeParts( now );
+		// LOCAL* : heure du wiki telle que configurée par $wgLocaltimezone
+		// côté serveur (voir ExtendedInputboxHooks::getLocalTimezoneOffsetMinutes),
+		// PAS l'heure locale du navigateur du visiteur. Si l'offset n'a pas
+		// été transmis (0 par défaut), LOCAL* == CURRENT*, ce qui correspond
+		// au comportement MediaWiki natif quand $wgLocaltimezone vaut UTC.
+		var localDate = new Date( now.getTime() + localTZOffsetMinutes * 60000 );
+		var local = buildTimeParts( localDate );
+
 		var userName = mw.config.get( 'wgUserName' ) || mw.msg( 'extendedinputbox-default-username' );
 		var pageName = mw.config.get( 'wgPageName' ) || '';
 
 		var magicMap = {
-			'LOCALTIMESTAMP': timestamp,
-			'CURRENTTIMESTAMP': timestamp,
-			'LOCALYEAR': year,
-			'CURRENTYEAR': year,
-			'LOCALMONTH': month,
-			'CURRENTMONTH': month,
-			'LOCALDAY': day,
-			'CURRENTDAY': day,
-			'LOCALTIME': timeStr,
-			'CURRENTTIME': timeStr,
-			'LOCALWEEK': week,
-			'CURRENTWEEK': week,
+			'LOCALTIMESTAMP': local.timestamp,
+			'CURRENTTIMESTAMP': current.timestamp,
+			'LOCALYEAR': local.year,
+			'CURRENTYEAR': current.year,
+			'LOCALMONTH': local.month,
+			'CURRENTMONTH': current.month,
+			'LOCALDAY': local.day,
+			'CURRENTDAY': current.day,
+			'LOCALTIME': local.time,
+			'CURRENTTIME': current.time,
+			'LOCALWEEK': local.week,
+			'CURRENTWEEK': current.week,
 			'USER': userName,
 			'REVISIONUSER': userName,
 			'PAGENAME': pageName,
@@ -202,6 +235,22 @@
 			}
 		}
 		return null;
+	}
+
+	// WindowManager unique, créé au premier besoin et jamais détruit : c'est
+	// ce que le commentaire plus haut annonçait, mais que le code ne faisait
+	// pas (un `new OO.ui.WindowManager()` + `destroy()` à chaque ouverture).
+	// ExtendedDialog.static.name valant toujours 'extendedInputboxDialog'
+	// (même chaîne à chaque appel de openExtendedDialog), il faut retirer la
+	// fenêtre fermée du gestionnaire avant qu'une nouvelle ouverture ne
+	// tente d'ajouter une fenêtre de même nom.
+	var sharedWindowManager = null;
+	function getSharedWindowManager() {
+		if ( !sharedWindowManager ) {
+			sharedWindowManager = new OO.ui.WindowManager();
+			$( 'body' ).append( sharedWindowManager.$element );
+		}
+		return sharedWindowManager;
 	}
 
 	function openExtendedDialog( config, $form, api ) {
@@ -545,14 +594,17 @@
 			return ExtendedDialog.super.prototype.getActionProcess.call( this, action );
 		};
 
-		var windowManager = new OO.ui.WindowManager();
-		$( 'body' ).append( windowManager.$element );
+		var windowManager = getSharedWindowManager();
 		var dialog = new ExtendedDialog( { size: 'medium' } );
 		windowManager.addWindows( [ dialog ] );
 		var openedWindow = windowManager.openWindow( dialog );
 
 		openedWindow.closed.then( function () {
-			windowManager.destroy();
+			// On retire uniquement CETTE fenêtre (par son nom statique) du
+			// gestionnaire partagé, sans jamais appeler destroy() dessus :
+			// le WindowManager doit survivre à la fermeture pour servir à
+			// la prochaine ouverture (voir getSharedWindowManager).
+			windowManager.removeWindows( [ ExtendedDialog.static.name ] );
 		} );
 	}
 

@@ -188,6 +188,10 @@ class ExtendedInputboxHooks
 		if ($hasPopups) {
 			$out->addModules('ext.extendedInputbox.popup');
 			$out->addJsConfigVars('extendedInputboxConfigs', $popupConfigsForJs);
+			// Permet à popup.js de distinguer LOCAL* (heure du wiki) de
+			// CURRENT* (toujours UTC) sans dépendre du fuseau du navigateur
+			// du visiteur, qui n'a aucun rapport avec $wgLocaltimezone.
+			$out->addJsConfigVars('extendedInputboxLocalTZOffset', self::getLocalTimezoneOffsetMinutes());
 		}
 
 		if (!$domModified) {
@@ -201,6 +205,34 @@ class ExtendedInputboxHooks
 
 		$text = $serializedHtml;
 		return true;
+	}
+
+	/**
+	 * Décalage en minutes entre le fuseau horaire configuré pour le wiki
+	 * ($wgLocaltimezone) et UTC, à l'instant présent (donc DST déjà pris en
+	 * compte). Transmis au JS pour que LOCAL* (heure du wiki) diffère
+	 * réellement de CURRENT* (toujours UTC), au lieu d'être mappés sur la
+	 * même valeur comme auparavant. Si $wgLocaltimezone est UTC (valeur par
+	 * défaut de MediaWiki), le décalage vaut 0 et LOCAL* == CURRENT*, ce qui
+	 * reproduit fidèlement le comportement natif de MediaWiki.
+	 *
+	 * @return int
+	 */
+	private static function getLocalTimezoneOffsetMinutes()
+	{
+		global $wgLocaltimezone;
+
+		$tzName = $wgLocaltimezone ?: 'UTC';
+
+		try {
+			$tz = new DateTimeZone($tzName);
+			$now = new DateTime('now', $tz);
+			return (int) ($tz->getOffset($now) / 60);
+		} catch (Exception $e) {
+			// Nom de fuseau invalide/inattendu : on retombe sur UTC (offset 0)
+			// plutôt que de casser l'affichage de la popup.
+			return 0;
+		}
 	}
 
 	/**

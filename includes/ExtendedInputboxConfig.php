@@ -13,8 +13,106 @@
 class ExtendedInputboxConfig {
 
 	/**
+	 * Liste des 147 noms de couleurs CSS (Color Module Level 3/4) + rebeccapurple.
+	 * Miroir exact de CSS_COLOR_KEYWORDS côté JS (Modules/ext.extendedInputbox.fallback.js) :
+	 * toute évolution ici doit être répercutée là-bas (et inversement).
+	 */
+	private static $CSS_COLOR_KEYWORDS = [
+		'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black',
+		'blanchedalmond', 'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse',
+		'chocolate', 'coral', 'cornflowerblue', 'cornsilk', 'crimson', 'cyan', 'darkblue', 'darkcyan',
+		'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey', 'darkkhaki', 'darkmagenta',
+		'darkolivegreen', 'darkorange', 'darkorchid', 'darkred', 'darksalmon', 'darkseagreen',
+		'darkslateblue', 'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet', 'deeppink',
+		'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen',
+		'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 'goldenrod', 'gray', 'grey', 'green',
+		'greenyellow', 'honeydew', 'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender',
+		'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan',
+		'lightgoldenrodyellow', 'lightgray', 'lightgreen', 'lightgrey', 'lightpink', 'lightsalmon',
+		'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 'lightsteelblue',
+		'lightyellow', 'lime', 'limegreen', 'linen', 'magenta', 'maroon', 'mediumaquamarine',
+		'mediumblue', 'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue',
+		'mediumspringgreen', 'mediumturquoise', 'mediumvioletred', 'midnightblue', 'mintcream',
+		'mistyrose', 'moccasin', 'navajowhite', 'navy', 'oldlace', 'olive', 'olivedrab', 'orange',
+		'orangered', 'orchid', 'palegoldenrod', 'palegreen', 'paleturquoise', 'palevioletred',
+		'papayawhip', 'peachpuff', 'peru', 'pink', 'plum', 'powderblue', 'purple', 'rebeccapurple',
+		'red', 'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown', 'seagreen',
+		'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 'snow',
+		'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet',
+		'wheat', 'white', 'whitesmoke', 'yellow', 'yellowgreen',
+	];
+
+	private const RE_NUMBER = '/^\d{1,3}(?:\.\d+)?$/';
+	private const RE_PERCENT = '/^\d{1,3}(?:\.\d+)?%$/';
+
+	private static function isValidAlpha( $val ) {
+		return ( preg_match( self::RE_NUMBER, $val ) && (float)$val <= 1 ) ||
+			( preg_match( self::RE_PERCENT, $val ) && (float)$val <= 100 );
+	}
+
+	/**
+	 * rgb()/rgba() : les 3 composantes doivent être toutes en nombres (0-255)
+	 * OU toutes en pourcentages (0-100%), sans mélange (comme en CSS legacy) ;
+	 * l'alpha optionnelle est un nombre 0-1 ou un pourcentage 0-100%.
+	 */
+	private static function isValidRgbArgs( $argsStr ) {
+		$parts = array_map( 'trim', explode( ',', $argsStr ) );
+		if ( count( $parts ) !== 3 && count( $parts ) !== 4 ) {
+			return false;
+		}
+
+		$rgb = array_slice( $parts, 0, 3 );
+		$allNumber = true;
+		$allPercent = true;
+		foreach ( $rgb as $p ) {
+			if ( !( preg_match( self::RE_NUMBER, $p ) && (float)$p <= 255 ) ) {
+				$allNumber = false;
+			}
+			if ( !( preg_match( self::RE_PERCENT, $p ) && (float)$p <= 100 ) ) {
+				$allPercent = false;
+			}
+		}
+
+		if ( !$allNumber && !$allPercent ) {
+			return false;
+		}
+		if ( count( $parts ) === 4 && !self::isValidAlpha( $parts[3] ) ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * hsl()/hsla() : teinte en nombre (degrés implicites), saturation et
+	 * luminosité obligatoirement en pourcentages 0-100% ; alpha optionnelle
+	 * comme pour rgb().
+	 */
+	private static function isValidHslArgs( $argsStr ) {
+		$parts = array_map( 'trim', explode( ',', $argsStr ) );
+		if ( count( $parts ) !== 3 && count( $parts ) !== 4 ) {
+			return false;
+		}
+
+		if ( !preg_match( '/^-?\d{1,3}(?:\.\d+)?(?:deg)?$/', $parts[0] ) ) {
+			return false;
+		}
+		if ( !preg_match( self::RE_PERCENT, $parts[1] ) || (float)$parts[1] > 100 ) {
+			return false;
+		}
+		if ( !preg_match( self::RE_PERCENT, $parts[2] ) || (float)$parts[2] > 100 ) {
+			return false;
+		}
+		if ( count( $parts ) === 4 && !self::isValidAlpha( $parts[3] ) ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
 	 * Valide une valeur de couleur CSS (hex, rgb(a), hsl(a) ou nom de couleur).
-	 * Identique à isValidCssColor() côté JS.
+	 * Identique à isValidCssColor() côté JS (Modules/ext.extendedInputbox.fallback.js).
 	 *
 	 * @param string|null $val
 	 * @return bool
@@ -24,12 +122,32 @@ class ExtendedInputboxConfig {
 			return false;
 		}
 		$val = trim( $val );
-		return (
-			preg_match( '/^#[0-9a-fA-F]{3,8}$/', $val ) ||
-			preg_match( '/^rgba?\(\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*(,\s*[\d.]+\s*)?\)$/', $val ) ||
-			preg_match( '/^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(,\s*[\d.]+\s*)?\)$/', $val ) ||
-			preg_match( '/^[a-zA-Z]{3,20}$/', $val )
-		);
+
+		// Hex : seules les longueurs 3, 4, 6 et 8 sont des couleurs CSS
+		// valides (5 et 7 ne le sont pas), contrairement à l'ancienne regex
+		// {3,8} qui les acceptait toutes.
+		if ( preg_match( '/^#[0-9a-fA-F]+$/', $val ) ) {
+			$hexLen = strlen( $val ) - 1;
+			return $hexLen === 3 || $hexLen === 4 || $hexLen === 6 || $hexLen === 8;
+		}
+
+		if ( preg_match( '/^rgba?\(([^)]*)\)$/i', $val, $m ) ) {
+			return self::isValidRgbArgs( $m[1] );
+		}
+
+		if ( preg_match( '/^hsla?\(([^)]*)\)$/i', $val, $m ) ) {
+			return self::isValidHslArgs( $m[1] );
+		}
+
+		$lower = strtolower( $val );
+		if ( $lower === 'transparent' || $lower === 'currentcolor' ) {
+			return true;
+		}
+
+		// Nom de couleur : contrairement à l'ancienne regex /^[a-zA-Z]{3,20}$/
+		// qui acceptait n'importe quel mot ("foobar" compris), on vérifie
+		// désormais l'appartenance à la liste réelle des noms CSS valides.
+		return in_array( $lower, self::$CSS_COLOR_KEYWORDS, true );
 	}
 
 	/**

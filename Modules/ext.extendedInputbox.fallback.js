@@ -20,15 +20,105 @@
 	var configCache = null;
 	var skipInitialServerProcessedContent = mw.config.get( 'extendedInputboxServerProcessed' ) === true;
 
+	// Liste des 147 noms de couleurs CSS (Color Module Level 3/4) + rebeccapurple.
+	// Miroir exact de ExtendedInputboxConfig::CSS_COLOR_KEYWORDS côté PHP :
+	// toute évolution ici doit être répercutée là-bas (et inversement).
+	var CSS_COLOR_KEYWORDS = [
+		'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black',
+		'blanchedalmond', 'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse',
+		'chocolate', 'coral', 'cornflowerblue', 'cornsilk', 'crimson', 'cyan', 'darkblue', 'darkcyan',
+		'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey', 'darkkhaki', 'darkmagenta',
+		'darkolivegreen', 'darkorange', 'darkorchid', 'darkred', 'darksalmon', 'darkseagreen',
+		'darkslateblue', 'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet', 'deeppink',
+		'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen',
+		'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 'goldenrod', 'gray', 'grey', 'green',
+		'greenyellow', 'honeydew', 'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender',
+		'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan',
+		'lightgoldenrodyellow', 'lightgray', 'lightgreen', 'lightgrey', 'lightpink', 'lightsalmon',
+		'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 'lightsteelblue',
+		'lightyellow', 'lime', 'limegreen', 'linen', 'magenta', 'maroon', 'mediumaquamarine',
+		'mediumblue', 'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue',
+		'mediumspringgreen', 'mediumturquoise', 'mediumvioletred', 'midnightblue', 'mintcream',
+		'mistyrose', 'moccasin', 'navajowhite', 'navy', 'oldlace', 'olive', 'olivedrab', 'orange',
+		'orangered', 'orchid', 'palegoldenrod', 'palegreen', 'paleturquoise', 'palevioletred',
+		'papayawhip', 'peachpuff', 'peru', 'pink', 'plum', 'powderblue', 'purple', 'rebeccapurple',
+		'red', 'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown', 'seagreen',
+		'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 'snow',
+		'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet',
+		'wheat', 'white', 'whitesmoke', 'yellow', 'yellowgreen'
+	];
+
+	var RE_NUMBER = /^\d{1,3}(?:\.\d+)?$/;
+	var RE_PERCENT = /^\d{1,3}(?:\.\d+)?%$/;
+
+	function isValidAlpha( val ) {
+		return ( RE_NUMBER.test( val ) && parseFloat( val ) <= 1 ) ||
+			( RE_PERCENT.test( val ) && parseFloat( val ) <= 100 );
+	}
+
+	// rgb()/rgba() : les 3 composantes doivent être toutes en nombres (0-255)
+	// OU toutes en pourcentages (0-100%), sans mélange (comme en CSS legacy) ;
+	// l'alpha optionnelle est un nombre 0-1 ou un pourcentage 0-100%.
+	function isValidRgbArgs( argsStr ) {
+		var parts = argsStr.split( ',' ).map( function ( s ) { return s.trim(); } );
+		if ( parts.length !== 3 && parts.length !== 4 ) { return false; }
+
+		var rgb = parts.slice( 0, 3 );
+		var allNumber = rgb.every( function ( p ) { return RE_NUMBER.test( p ) && parseFloat( p ) <= 255; } );
+		var allPercent = rgb.every( function ( p ) { return RE_PERCENT.test( p ) && parseFloat( p ) <= 100; } );
+
+		if ( !allNumber && !allPercent ) { return false; }
+		if ( parts.length === 4 && !isValidAlpha( parts[3] ) ) { return false; }
+
+		return true;
+	}
+
+	// hsl()/hsla() : teinte en nombre (degrés implicites), saturation et
+	// luminosité obligatoirement en pourcentages 0-100% ; alpha optionnelle
+	// comme pour rgb().
+	function isValidHslArgs( argsStr ) {
+		var parts = argsStr.split( ',' ).map( function ( s ) { return s.trim(); } );
+		if ( parts.length !== 3 && parts.length !== 4 ) { return false; }
+
+		if ( !/^-?\d{1,3}(?:\.\d+)?(?:deg)?$/.test( parts[0] ) ) { return false; }
+		if ( !RE_PERCENT.test( parts[1] ) || parseFloat( parts[1] ) > 100 ) { return false; }
+		if ( !RE_PERCENT.test( parts[2] ) || parseFloat( parts[2] ) > 100 ) { return false; }
+		if ( parts.length === 4 && !isValidAlpha( parts[3] ) ) { return false; }
+
+		return true;
+	}
+
 	function isValidCssColor( val ) {
 		if ( !val ) { return false; }
 		val = val.trim();
-		return (
-			/^#[0-9a-fA-F]{3,8}$/.test( val ) ||
-			/^rgba?\(\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*(,\s*[\d.]+\s*)?\)$/.test( val ) ||
-			/^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(,\s*[\d.]+\s*)?\)$/.test( val ) ||
-			/^[a-zA-Z]{3,20}$/.test( val )
-		);
+
+		// Hex : seules les longueurs 3, 4, 6 et 8 sont des couleurs CSS
+		// valides (5 et 7 ne le sont pas), contrairement à l'ancienne regex
+		// {3,8} qui les acceptait toutes.
+		if ( /^#[0-9a-fA-F]+$/.test( val ) ) {
+			var hexLen = val.length - 1;
+			return hexLen === 3 || hexLen === 4 || hexLen === 6 || hexLen === 8;
+		}
+
+		var rgbMatch = val.match( /^rgba?\(([^)]*)\)$/i );
+		if ( rgbMatch ) {
+			return isValidRgbArgs( rgbMatch[1] );
+		}
+
+		var hslMatch = val.match( /^hsla?\(([^)]*)\)$/i );
+		if ( hslMatch ) {
+			return isValidHslArgs( hslMatch[1] );
+		}
+
+		var lower = val.toLowerCase();
+		if ( lower === 'transparent' || lower === 'currentcolor' ) {
+			return true;
+		}
+
+		// Nom de couleur : contrairement à l'ancienne regex /^[a-zA-Z]{3,20}$/
+		// qui acceptait n'importe quel mot ("foobar" compris), on vérifie
+		// désormais l'appartenance à la liste réelle des noms CSS valides.
+		return CSS_COLOR_KEYWORDS.indexOf( lower ) !== -1;
 	}
 
 	function getConfigsForCurrentPage() {
