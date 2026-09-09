@@ -318,8 +318,10 @@
 					widget.setRequired( true );
 				}
 
+				var requiredMarker = config.requiredMarker === null ?
+					mw.msg( 'extendedinputbox-required-marker' ) : config.requiredMarker;
 				var layoutConfig = {
-					label: field.required ? field.label + ' ' + mw.msg( 'extendedinputbox-required-marker' ) : field.label,
+					label: field.required && requiredMarker ? field.label + ' ' + requiredMarker : field.label,
 					align: 'top'
 				};
 				if ( field.help ) {
