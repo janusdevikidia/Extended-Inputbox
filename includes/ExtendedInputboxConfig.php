@@ -114,6 +114,8 @@ class ExtendedInputboxConfig {
 	 * Valide une valeur de couleur CSS pour le rendu serveur (hex, rgb(a),
 	 * hsl(a) ou nom de couleur). Le fallback dynamique utilise CSS.supports()
 	 * pour s'aligner sur le moteur CSS du navigateur sans dupliquer cette liste.
+	 * Valide une valeur de couleur CSS (hex, rgb(a), hsl(a) ou nom de couleur).
+	 * Identique à isValidCssColor() côté JS.
 	 *
 	 * @param string|null $val
 	 * @return bool

@@ -6,11 +6,20 @@ plusieurs valeurs avant de créer ou modifier une page, de précharger un modèl
 et de personnaliser le bouton.
 
 Compatible avec MediaWiki **1.39+** et avec l’extension **InputBox**.
+##  Prérequis
+
+* MediaWiki 1.39 ou supérieur
+* Extension [InputBox](https://www.mediawiki.org/wiki/Extension:InputBox) installée et activée
+
+---
 
 ## Installation
 
 1. Installez et activez l’extension `InputBox`.
-2. Placez ce dépôt dans `extensions/Extended-Inputbox`.
+2. Téléchargez ou clonez ce dépôt dans le dossier `extensions/` de votre installation MediaWiki :
+   ```bash
+   cd extensions/
+   git clone https://github.com/Janusdevikidia/Extended-Inputbox.git
 3. Ajoutez la ligne suivante dans `LocalSettings.php` :
 
 ```php
@@ -181,19 +190,6 @@ Un petit module de secours reste chargé sur les pages contenant une InputBox :
 il couvre les formulaires ajoutés dynamiquement (prévisualisation, gadget,
 VisualEditor). Dans ce cas rare, il lit la configuration de la page via l’API.
 
-## Tests
-
-Les règles de parsing et de validation des couleurs sont couvertes par des
-tests PHPUnit indépendants de MediaWiki. Depuis une installation disposant de
-PHPUnit :
-
-```sh
-phpunit -c phpunit.xml.dist
-```
-
-Les tests de rendu HTML et d’intégration doivent être exécutés dans
-l’environnement de test MediaWiki, car ils dépendent du parseur et de
-`OutputPage`.
 
 ## Mots magiques dans `preload` et `default`
 
