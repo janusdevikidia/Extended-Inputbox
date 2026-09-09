@@ -235,7 +235,6 @@
 					$target.find( '.extended-inputbox-error' ).remove();
 					var $errContainer = $( '<div>' )
 						.addClass( 'extended-inputbox-error' )
-						.css( { 'color': '#d33', 'font-weight': 'bold', 'margin-top': '8px', 'font-size': '0.9em' } )
 						.text( config.errors.join( ' ' ) );
 					$target.append( $errContainer );
 				}
@@ -304,14 +303,25 @@
 		var btnText = $form.find( 'input[type="submit"], button[type="submit"]' ).val() || '';
 		var formPreload = $form.find( 'input[name="preload"]' ).val() || '';
 
-		for ( var i = 0; i < configs.length; i++ ) {
-			var c = configs[i];
-			if ( c.rawParams.buttonlabel && c.rawParams.buttonlabel.trim() === btnText.trim() ) {
-				return c;
-			}
-			if ( formPreload && ( c.preload === formPreload || c.rawParams.preload === formPreload ) ) {
-				return c;
-			}
+		// Si plusieurs <inputbox> de la page partagent le même buttonlabel (cas
+		// fréquent quand une page réutilise un modèle), un match par libellé
+		// n'est fiable QUE s'il est unique : sinon on associerait arbitrairement
+		// ce $form à la première config correspondante, potentiellement la
+		// mauvaise. On ne retient donc un match par libellé/preload que s'il n'y
+		// en a exactement qu'un ; en cas d'ambiguïté (0 ou plusieurs), on retombe
+		// sur la correspondance positionnelle (fallbackIndex), plus prévisible.
+		var byLabel = btnText.trim() ? configs.filter( function ( c ) {
+			return c.rawParams.buttonlabel && c.rawParams.buttonlabel.trim() === btnText.trim();
+		} ) : [];
+		if ( byLabel.length === 1 ) {
+			return byLabel[0];
+		}
+
+		var byPreload = formPreload ? configs.filter( function ( c ) {
+			return c.preload === formPreload || c.rawParams.preload === formPreload;
+		} ) : [];
+		if ( byPreload.length === 1 ) {
+			return byPreload[0];
 		}
 
 		return configs[ fallbackIndex ] || null;
@@ -326,7 +336,11 @@
 			if ( !line || line.indexOf( '<!--' ) === 0 ) { return; }
 
 			var eqIdx = line.indexOf( '=' );
-			if ( !eqIdx || eqIdx === -1 ) { return; }
+			// Bug corrigé : "!eqIdx" était vrai aussi pour eqIdx === 0 (ligne
+			// commençant par "="), ce qui ignorait silencieusement cette ligne
+			// alors que ExtendedInputboxConfig::parseSingleConfig() (PHP) ne
+			// teste que "$eqIdx === false". Les deux miroirs divergeaient.
+			if ( eqIdx === -1 ) { return; }
 
 			var key = line.substring( 0, eqIdx ).trim().toLowerCase();
 			var val = line.substring( eqIdx + 1 ).trim();
@@ -363,6 +377,12 @@
 				if ( parts.length >= 3 ) {
 					var maxlengthRaw = parts[9] || '';
 					var minlengthRaw = parts[10] || '';
+					// Miroir exact de la détection PHP (ExtendedInputboxConfig::parseSingleConfig) :
+					// un nom de champ dupliqué écrase silencieusement le widget précédent.
+					var isDuplicateName = config.fields.some( function ( f ) { return f.name === parts[0]; } );
+					if ( isDuplicateName ) {
+						config.errors.push( mw.msg( 'extendedinputbox-error-duplicate-field', parts[0] ) );
+					}
 					config.fields.push( {
 						name: parts[0],
 						type: parts[1],

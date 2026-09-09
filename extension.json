@@ -29,7 +29,8 @@
             "messages": [
                 "extendedinputbox-error-popup-preload-deprecated",
                 "extendedinputbox-error-invalid-bgcolor",
-                "extendedinputbox-error-invalid-bordercolor"
+                "extendedinputbox-error-invalid-bordercolor",
+                "extendedinputbox-error-duplicate-field"
             ]
         },
         "ext.extendedInputbox.popup": {

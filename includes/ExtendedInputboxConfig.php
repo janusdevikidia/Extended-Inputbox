@@ -329,6 +329,17 @@ class ExtendedInputboxConfig {
 					if ( count( $parts ) >= 3 ) {
 						$maxlength = $parts[9] ?? '';
 						$minlength = $parts[10] ?? '';
+						// Un nom de champ dupliqué écraserait silencieusement le
+						// widget précédent (même clé dans dialog.widgets/fieldLayouts
+						// côté JS) et casserait show-if/preload-params de façon très
+						// difficile à diagnostiquer pour l'auteur de la page : on le
+						// signale explicitement plutôt que de laisser faire.
+						foreach ( $config['fields'] as $existingField ) {
+							if ( $existingField['name'] === $parts[0] ) {
+								$config['errors'][] = wfMessage( 'extendedinputbox-error-duplicate-field', $parts[0] )->text();
+								break;
+							}
+						}
 						$config['fields'][] = [
 							'name' => $parts[0],
 							'type' => $parts[1],

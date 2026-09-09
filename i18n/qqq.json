@@ -16,6 +16,7 @@
 	"extendedinputbox-error-popup-preload-deprecated": "Error shown when the deprecated \"popup-preload\" parameter is used in an <inputbox> configuration.",
 	"extendedinputbox-error-invalid-bgcolor": "Error shown when \"button-bgcolor\" is not a valid CSS color.",
 	"extendedinputbox-error-invalid-bordercolor": "Error shown when \"button-border-color\" is not a valid CSS color.",
+	"extendedinputbox-error-duplicate-field": "Error shown when the same field name is used in more than one \"popup-field\" parameter within a single <inputbox>. Parameters:\n* $1 - the duplicated field name",
 	"extendedinputbox-required-marker": "Short marker appended to a field's label when it is required (\"required=yes\" on \"popup-field\"). Kept as a separate message so it can be adapted per language/theme if needed.",
 	"extendedinputbox-error-field-required": "Error shown when a required field (\"required=yes\" on \"popup-field\") is left empty at submission time. Parameters:\n* $1 - the field's label",
 	"extendedinputbox-error-field-minlength": "Error shown when a field's value is shorter than its configured \"minlength\". Parameters:\n* $1 - the field's label\n* $2 - the configured minimum length",
