@@ -13,9 +13,9 @@
 class ExtendedInputboxConfig {
 
 	/**
-	 * Liste des 147 noms de couleurs CSS (Color Module Level 3/4) + rebeccapurple.
-	 * Miroir exact de CSS_COLOR_KEYWORDS côté JS (Modules/ext.extendedInputbox.fallback.js) :
-	 * toute évolution ici doit être répercutée là-bas (et inversement).
+	 * Liste de référence des noms de couleurs CSS acceptés lors du rendu serveur.
+	 * Le fallback navigateur délègue cette même vérification à CSS.supports(),
+	 * afin de ne pas embarquer et maintenir une seconde copie de cette liste.
 	 */
 	private static $CSS_COLOR_KEYWORDS = [
 		'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black',
@@ -111,8 +111,9 @@ class ExtendedInputboxConfig {
 	}
 
 	/**
-	 * Valide une valeur de couleur CSS (hex, rgb(a), hsl(a) ou nom de couleur).
-	 * Identique à isValidCssColor() côté JS (Modules/ext.extendedInputbox.fallback.js).
+	 * Valide une valeur de couleur CSS pour le rendu serveur (hex, rgb(a),
+	 * hsl(a) ou nom de couleur). Le fallback dynamique utilise CSS.supports()
+	 * pour s'aligner sur le moteur CSS du navigateur sans dupliquer cette liste.
 	 *
 	 * @param string|null $val
 	 * @return bool
@@ -245,8 +246,9 @@ class ExtendedInputboxConfig {
 			'skipEdit' => false,
 			'preload' => null,
 			'preloadParams' => null,
-			'buttonBgColor' => null,
-			'buttonBorderColor' => null,
+		'buttonBgColor' => null,
+		'buttonBorderColor' => null,
+		'requiredMarker' => null,
 		];
 
 		$lines = preg_split( '/\r\n|\r|\n/', $rawText );
@@ -280,9 +282,15 @@ class ExtendedInputboxConfig {
 				case 'popup-title':
 					$config['title'] = $val;
 					break;
-				case 'popup-text':
-					$config['text'] = $val;
-					break;
+			case 'popup-text':
+				$config['text'] = $val;
+				break;
+			case 'popup-required-marker':
+			case 'required-marker':
+				// null signifie « utiliser le libellé i18n » ; une chaîne vide
+				// permet volontairement de masquer le marqueur visuel.
+				$config['requiredMarker'] = $val;
+				break;
 				case 'popup-skip-edit':
 				case 'skip-edit':
 					$config['skipEdit'] = ( strtolower( $val ) === 'yes' );

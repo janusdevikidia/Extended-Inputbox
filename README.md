@@ -120,6 +120,7 @@ Les paramètres standards d’InputBox (`type`, `page`, `prefix`, `preload`,
 | `popup-text` | Texte affiché au début de la fenêtre. |
 | `popup-field` | Ajoute un champ ; son format est détaillé ci-dessous. |
 | `popup-skip-edit=yes` | Publie directement la page après validation de la fenêtre. Nécessite une popup. |
+| `required-marker=(obligatoire)` | Remplace le marqueur visuel des champs requis pour cette popup. Laissez la valeur vide pour ne pas l’afficher ; le défaut est défini par la traduction du wiki. Alias : `popup-required-marker`. |
 | `preload-params=a,b,c` | Associe `$1`, `$2`, `$3` aux champs nommés `a`, `b`, `c`. Alias : `popup-preload-params`, `preloadparams`. |
 | `button-bgcolor` ou `button-bg` | Couleur CSS de fond du bouton. |
 | `button-border-color` ou `button-border` | Couleur CSS de bordure du bouton. |
@@ -179,6 +180,20 @@ présente dans le rendu initial.
 Un petit module de secours reste chargé sur les pages contenant une InputBox :
 il couvre les formulaires ajoutés dynamiquement (prévisualisation, gadget,
 VisualEditor). Dans ce cas rare, il lit la configuration de la page via l’API.
+
+## Tests
+
+Les règles de parsing et de validation des couleurs sont couvertes par des
+tests PHPUnit indépendants de MediaWiki. Depuis une installation disposant de
+PHPUnit :
+
+```sh
+phpunit -c phpunit.xml.dist
+```
+
+Les tests de rendu HTML et d’intégration doivent être exécutés dans
+l’environnement de test MediaWiki, car ils dépendent du parseur et de
+`OutputPage`.
 
 ## Mots magiques dans `preload` et `default`
 
