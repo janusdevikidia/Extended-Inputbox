@@ -1,6 +1,9 @@
 <?php
 
+use MediaWiki\MediaWikiServices;
+
 class ExtendedInputboxHooks {
+<<<<<<< HEAD
     public static function onBeforePageDisplay( OutputPage $out, $skin ) {
         $out->addModules( 'ext.extendedInputbox' );
         
@@ -47,10 +50,62 @@ class ExtendedInputboxHooks
 	public static function onOutputPageBeforeHTML(OutputPage $out, &$text)
 	{
 		if (strpos($text, 'mw-inputbox') === false && strpos($text, 'createbox') === false) {
+=======
+
+	/**
+	 * Bloque immédiatement les clics sur TOUS les boutons submit InputBox dès
+	 * le HTML initial (avant tout JS). C'est une sécurité "au cas où" : le
+	 * hook onOutputPageBeforeHTML() lève ce blocage sélectivement pour les
+	 * formulaires qui n'ont finalement pas de popup (voir plus bas), donc ce
+	 * blocage global ne dure que le temps du calcul PHP (quasi instantané, il
+	 * n'y a plus d'aller-retour réseau côté client).
+	 *
+	 * Important : on ne bloque QUE les clics (pointer-events), jamais
+	 * l'apparence (pas d'opacity). Les couleurs de bouton sont déjà correctes
+	 * dans le HTML initial (voir bakeIntoHtml()) ; si on baissait l'opacité
+	 * ici, le bouton apparaîtrait délavé/grisé le temps que le module popup
+	 * se charge, puis "flasherait" vers sa vraie couleur une fois le blocage
+	 * levé en JS — ce qui est exactement l'effet visuel à éviter.
+	 */
+	public static function onBeforePageDisplay( OutputPage $out, $skin ) {
+		// Module léger (pas d'OOUI) : ne fait rien sur une page sans InputBox,
+		// et ne sert de filet de sécurité que pour du contenu injecté
+		// dynamiquement (voir ext.extendedInputbox.fallback.js).
+		$out->addModules( 'ext.extendedInputbox.fallback' );
+
+		$out->addInlineStyle(
+			'.mw-inputbox-container input[type="submit"], .mw-inputbox-centered input[type="submit"], ' .
+			'form.createbox input[type="submit"], form.createbox button[type="submit"] { pointer-events: none; }'
+		);
+	}
+
+	/**
+	 * Cœur du nouveau fonctionnement : calcule les configs <inputbox>
+	 * (couleurs, popups, erreurs) côté SERVEUR, et modifie directement le
+	 * HTML final de la page avant qu'il ne soit envoyé au navigateur.
+	 *
+	 * Conséquences :
+	 *  - les couleurs de bouton sont correctes dès le tout premier rendu
+	 *    (plus aucun flash, plus d'appel API côté client pour ça) ;
+	 *  - le module ext.extendedInputbox.popup (qui dépend d'OOUI, donc lourd)
+	 *    n'est chargé QUE si cette page contient réellement au moins une
+	 *    popup à afficher.
+	 *
+	 * Limite connue : ce hook ne s'applique qu'au HTML de la page telle que
+	 * rendue par le serveur. Un contenu injecté dynamiquement après coup
+	 * (prévisualisation live, VisualEditor, etc.) n'est pas concerné et
+	 * retombe sur ext.extendedInputbox.fallback.js (voir ce fichier).
+	 */
+	public static function onOutputPageBeforeHTML( OutputPage $out, &$text ) {
+		// Sortie rapide et bon marché : si la page ne contient aucun HTML
+		// d'InputBox, inutile d'aller chercher/parser le wikitexte.
+		if ( strpos( $text, 'mw-inputbox' ) === false && strpos( $text, 'createbox' ) === false ) {
+>>>>>>> origin/main
 			return;
 		}
 
 		$title = $out->getTitle();
+<<<<<<< HEAD
 		if (!$title || !$title->exists() || $title->getContentModel() !== CONTENT_MODEL_WIKITEXT) {
 			return;
 		}
@@ -91,10 +146,51 @@ class ExtendedInputboxHooks
 		$content = $wikiPage->getContent();
 
 		if (!$content instanceof WikitextContent) {
+=======
+		if ( !$title || !$title->exists() || $title->getContentModel() !== CONTENT_MODEL_WIKITEXT ) {
+			return;
+		}
+
+		$wikitext = self::getExpandedWikitext( $out, $title );
+		if ( $wikitext === null ) {
+			return;
+		}
+
+		$allConfigs = ExtendedInputboxConfig::extractConfigs( $wikitext );
+		if ( !$allConfigs ) {
+			return;
+		}
+
+		$extendedConfigs = array_values( array_filter(
+			$allConfigs,
+			[ ExtendedInputboxConfig::class, 'isExtended' ]
+		) );
+		if ( !$extendedConfigs ) {
+			return;
+		}
+
+		self::bakeIntoHtml( $out, $text, $allConfigs, $extendedConfigs );
+	}
+
+	/**
+	 * Équivalent serveur de l'ancien appel API action=expandtemplates fait
+	 * côté client : développe les modèles du wikitexte SANS exécuter les
+	 * tag-hooks, donc <inputbox>...</inputbox> reste intact et exploitable.
+	 *
+	 * @return string|null
+	 */
+	private static function getExpandedWikitext( OutputPage $out, Title $title ) {
+		$services = MediaWikiServices::getInstance();
+		$wikiPage = $services->getWikiPageFactory()->newFromTitle( $title );
+		$content = $wikiPage->getContent();
+
+		if ( !$content instanceof WikitextContent ) {
+>>>>>>> origin/main
 			return null;
 		}
 
 		$rawWikitext = $content->getText();
+<<<<<<< HEAD
 
 		if (stripos($rawWikitext, '<inputbox>') !== false) {
 			return $rawWikitext;
@@ -122,11 +218,40 @@ class ExtendedInputboxHooks
 		$dom = $parsedHtml['dom'];
 		$xpath = $parsedHtml['xpath'];
 		$wrapper = $parsedHtml['wrapper'];
+=======
+		$parser = $services->getParserFactory()->create();
+		$options = ParserOptions::newFromContext( $out->getContext() );
+
+		return $parser->preprocess( $rawWikitext, $title, $options );
+	}
+
+	/**
+	 * Modifie $text (HTML final de la page, par référence) pour y injecter :
+	 *  - les classes CSS de couleur sur les boutons concernés ;
+	 *  - un identifiant + attribut data-eib-index sur les formulaires à popup,
+	 *    pour que le JS popup les retrouve sans refaire de calcul ;
+	 *  - les messages d'erreur de config le cas échéant.
+	 *
+	 * Puis, si au moins une popup a été détectée, charge le module OOUI et
+	 * transmet les configs correspondantes via mw.config.
+	 */
+	private static function bakeIntoHtml( OutputPage $out, &$text, array $allConfigs, array $extendedConfigs ) {
+		$dom = new DOMDocument();
+		libxml_use_internal_errors( true );
+		$dom->loadHTML(
+			'<?xml encoding="utf-8" ?><div id="ei-root">' . $text . '</div>',
+			LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+		);
+		libxml_clear_errors();
+
+		$xpath = new DOMXPath( $dom );
+>>>>>>> origin/main
 		$nodes = $xpath->query(
 			"//*[contains(concat(' ', normalize-space(@class), ' '), ' mw-inputbox-centered ')" .
 			" or contains(concat(' ', normalize-space(@class), ' '), ' mw-inputbox-container ')" .
 			" or (local-name()='form' and contains(concat(' ', normalize-space(@class), ' '), ' createbox '))]"
 		);
+<<<<<<< HEAD
 		if (!($nodes instanceof DOMNodeList) || !$nodes->length) {
 			return false;
 		}
@@ -164,10 +289,54 @@ class ExtendedInputboxHooks
 					$containerModified = self::addInlineStyleAttr($btn, $inlineStyle) || $containerModified;
 					if (!empty($config['buttonBgColor'])) {
 						$containerModified = self::forceChildTextColor($btn, '#ffffff') || $containerModified;
+=======
+
+		$popupConfigsForJs = [];
+		$hasPopups = false;
+		$hasColors = false;
+
+		$index = 0;
+		foreach ( $nodes as $container ) {
+			// Matching par position : le n-ième conteneur InputBox du HTML
+			// correspond au n-ième <inputbox> du wikitexte. C'est la même
+			// hypothèse de repli que l'ancien code JS (findMatchingConfig).
+			$config = $extendedConfigs[ $index ] ?? $allConfigs[ $index ] ?? null;
+			$currentIndex = $index;
+			$index++;
+
+			if ( !$config ) {
+				continue;
+			}
+
+			$isPopup = ExtendedInputboxConfig::needsPopup( $config );
+			$hasColor = ExtendedInputboxConfig::needsColor( $config );
+			$hasErrors = !empty( $config['errors'] );
+
+			if ( !$isPopup && !$hasColor && !$hasErrors ) {
+				continue;
+			}
+
+			$form = $container->localName === 'form' ? $container : self::findDescendantForm( $xpath, $container );
+			$btnNodes = $form ? self::findSubmitButtons( $xpath, $form ) : [];
+
+			if ( $hasColor ) {
+				$hasColors = true;
+				// Style posé directement en attribut sur le bouton (et non via
+				// une classe + un <style> séparé) : la couleur fait ainsi
+				// partie du même HTML que le bouton, sans dépendre de l'ordre
+				// de chargement d'une autre feuille de style dans le <head>.
+				// C'est ce qui élimine le flash "gris avant la vraie couleur".
+				$inlineStyle = self::buildButtonInlineStyle( $config );
+				foreach ( $btnNodes as $btn ) {
+					self::addInlineStyleAttr( $btn, $inlineStyle );
+					if ( !empty( $config['buttonBgColor'] ) ) {
+						self::forceChildTextColor( $btn, '#ffffff' );
+>>>>>>> origin/main
 					}
 				}
 			}
 
+<<<<<<< HEAD
 			if ($isPopup && $form) {
 				$hasPopups = true;
 				if (!$form->getAttribute('id')) {
@@ -337,11 +506,61 @@ class ExtendedInputboxHooks
 
 	private static function findSubmitButtons(DOMXPath $xpath, DOMElement $form)
 	{
+=======
+			if ( $isPopup && $form ) {
+				$hasPopups = true;
+				if ( !$form->getAttribute( 'id' ) ) {
+					$form->setAttribute( 'id', 'ei-popup-' . $currentIndex );
+				}
+				$form->setAttribute( 'data-eib-index', (string)$currentIndex );
+				// Le blocage global posé par onBeforePageDisplay() reste actif
+				// pour ce bouton jusqu'à ce que le module popup prenne le relais.
+				$popupConfigsForJs[ $currentIndex ] = $config;
+			} else {
+				// Pas de popup pour ce formulaire : on lève explicitement le
+				// blocage global de clic posé par onBeforePageDisplay(), pour
+				// que le bouton fonctionne normalement sans dépendre du JS.
+				foreach ( $btnNodes as $btn ) {
+					self::addInlineStyleAttr( $btn, 'pointer-events:auto;' );
+				}
+			}
+
+			if ( $hasErrors ) {
+				self::appendErrorNode( $dom, $container, $config['errors'] );
+			}
+		}
+
+		if ( $hasPopups ) {
+			// OOUI n'est demandé QUE si cette page a effectivement une popup.
+			$out->addModules( 'ext.extendedInputbox.popup' );
+			$out->addJsConfigVars( 'extendedInputboxConfigs', $popupConfigsForJs );
+		}
+
+		if ( !$hasColors && !$hasPopups ) {
+			return;
+		}
+
+		$wrapper = $dom->getElementById( 'ei-root' );
+		$html = '';
+		foreach ( $wrapper->childNodes as $child ) {
+			$html .= $dom->saveHTML( $child );
+		}
+		$text = $html;
+	}
+
+	private static function findDescendantForm( DOMXPath $xpath, DOMElement $container ) {
+		$forms = $xpath->query( './/form', $container );
+		return $forms->length ? $forms->item( 0 ) : null;
+	}
+
+	private static function findSubmitButtons( DOMXPath $xpath, DOMElement $form ) {
+>>>>>>> origin/main
 		$nodes = $xpath->query(
 			".//input[@type='submit'] | .//button[@type='submit'] | " .
 			".//*[contains(concat(' ', normalize-space(@class), ' '), ' mw-ui-button ')]",
 			$form
 		);
+<<<<<<< HEAD
 		return $nodes instanceof DOMNodeList ? iterator_to_array($nodes) : [];
 	}
 
@@ -358,15 +577,46 @@ class ExtendedInputboxHooks
 
 	private static function buildButtonInlineStyle(array $config)
 	{
+=======
+		return iterator_to_array( $nodes );
+	}
+
+	private static function addInlineStyleAttr( DOMElement $el, $style ) {
+		$existing = $el->getAttribute( 'style' );
+		$el->setAttribute( 'style', rtrim( $existing, ';' ) . ( $existing ? ';' : '' ) . $style );
+	}
+
+	/**
+	 * Même comportement voulu que l'ancien buildButtonCss()/applyButtonStyle()
+	 * JS :
+	 * - button-bgcolor / button-bg          -> couleur de FOND
+	 * - button-border-color / button-border -> couleur de la BORDURE
+	 * - la couleur du texte n'est pas configurable : blanche dès qu'un fond est défini.
+	 *
+	 * Différence : ceci renvoie un style CSS destiné à être posé directement
+	 * en attribut `style` sur le bouton (voir addInlineStyleAttr), et non une
+	 * règle de classe à ajouter dans un <style> séparé. Poser la couleur dans
+	 * le même HTML que le bouton évite toute dépendance à l'ordre de
+	 * chargement d'une autre feuille de style dans le <head>.
+	 */
+	private static function buildButtonInlineStyle( array $config ) {
+>>>>>>> origin/main
 		$bg = $config['buttonBgColor'] ?? '';
 		$textColor = $bg ? '#ffffff' : '';
 		$borderColor = $config['buttonBorderColor'] ?? 'transparent';
 
 		$rules = [];
+<<<<<<< HEAD
 		if ($bg) {
 			$rules[] = 'background:' . $bg . ' !important';
 		}
 		if ($textColor) {
+=======
+		if ( $bg ) {
+			$rules[] = 'background:' . $bg . ' !important';
+		}
+		if ( $textColor ) {
+>>>>>>> origin/main
 			$rules[] = 'color:' . $textColor . ' !important';
 		}
 		$rules[] = 'border:2px solid ' . $borderColor . ' !important';
@@ -375,6 +625,7 @@ class ExtendedInputboxHooks
 		$rules[] = 'box-shadow:none';
 		$rules[] = 'text-shadow:none';
 
+<<<<<<< HEAD
 		return implode(';', $rules) . ';';
 	}
 
@@ -401,3 +652,29 @@ class ExtendedInputboxHooks
 		return true;
 	}
 }
+=======
+		return implode( ';', $rules ) . ';';
+	}
+
+	/**
+	 * Force la couleur du texte sur les descendants du bouton (icônes, spans
+	 * internes) qui pourraient avoir leur propre style et ne pas hériter de
+	 * la couleur posée sur le bouton lui-même.
+	 */
+	private static function forceChildTextColor( DOMElement $btn, $color ) {
+		foreach ( $btn->childNodes as $child ) {
+			if ( $child instanceof DOMElement ) {
+				self::addInlineStyleAttr( $child, 'color:' . $color . ' !important;' );
+				self::forceChildTextColor( $child, $color );
+			}
+		}
+	}
+
+	private static function appendErrorNode( DOMDocument $dom, DOMElement $container, array $errors ) {
+		$div = $dom->createElement( 'div', htmlspecialchars( implode( ' ', $errors ), ENT_QUOTES, 'UTF-8' ) );
+		$div->setAttribute( 'class', 'extended-inputbox-error' );
+		$div->setAttribute( 'style', 'color:#d33;font-weight:bold;margin-top:8px;font-size:0.9em;' );
+		$container->parentNode->insertBefore( $div, $container->nextSibling );
+	}
+}
+>>>>>>> origin/main

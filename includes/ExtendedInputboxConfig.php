@@ -13,6 +13,7 @@
 class ExtendedInputboxConfig {
 
 	/**
+<<<<<<< HEAD
 	 * Liste de référence des noms de couleurs CSS acceptés lors du rendu serveur.
 	 * Le fallback navigateur délègue cette même vérification à CSS.supports(),
 	 * afin de ne pas embarquer et maintenir une seconde copie de cette liste.
@@ -114,6 +115,10 @@ class ExtendedInputboxConfig {
 	 * Valide une valeur de couleur CSS pour le rendu serveur (hex, rgb(a),
 	 * hsl(a) ou nom de couleur). Le fallback dynamique utilise CSS.supports()
 	 * pour s'aligner sur le moteur CSS du navigateur sans dupliquer cette liste.
+=======
+	 * Valide une valeur de couleur CSS (hex, rgb(a), hsl(a) ou nom de couleur).
+	 * Identique à isValidCssColor() côté JS.
+>>>>>>> origin/main
 	 *
 	 * @param string|null $val
 	 * @return bool
@@ -123,6 +128,7 @@ class ExtendedInputboxConfig {
 			return false;
 		}
 		$val = trim( $val );
+<<<<<<< HEAD
 
 		// Hex : seules les longueurs 3, 4, 6 et 8 sont des couleurs CSS
 		// valides (5 et 7 ne le sont pas), contrairement à l'ancienne regex
@@ -172,6 +178,14 @@ class ExtendedInputboxConfig {
 		$wikitext = preg_replace( '/<nowiki\s*\/?>[\s\S]*?(<\/nowiki>|$)/i', '', $wikitext );
 		$wikitext = preg_replace( '/<pre\b[^>]*>[\s\S]*?(<\/pre>|$)/i', '', $wikitext );
 		return $wikitext;
+=======
+		return (
+			preg_match( '/^#[0-9a-fA-F]{3,8}$/', $val ) ||
+			preg_match( '/^rgba?\(\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*(,\s*[\d.]+\s*)?\)$/', $val ) ||
+			preg_match( '/^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(,\s*[\d.]+\s*)?\)$/', $val ) ||
+			preg_match( '/^[a-zA-Z]{3,20}$/', $val )
+		);
+>>>>>>> origin/main
 	}
 
 	/**
@@ -184,7 +198,10 @@ class ExtendedInputboxConfig {
 	 */
 	public static function extractConfigs( $wikitext ) {
 		$configs = [];
+<<<<<<< HEAD
 		$wikitext = self::stripNonRenderedRegions( $wikitext );
+=======
+>>>>>>> origin/main
 		if ( preg_match_all( '/<inputbox>([\s\S]*?)<\/inputbox>/i', $wikitext, $matches ) ) {
 			foreach ( $matches[1] as $rawText ) {
 				$configs[] = self::parseSingleConfig( $rawText );
@@ -246,9 +263,14 @@ class ExtendedInputboxConfig {
 			'skipEdit' => false,
 			'preload' => null,
 			'preloadParams' => null,
+<<<<<<< HEAD
 		'buttonBgColor' => null,
 		'buttonBorderColor' => null,
 		'requiredMarker' => null,
+=======
+			'buttonBgColor' => null,
+			'buttonBorderColor' => null,
+>>>>>>> origin/main
 		];
 
 		$lines = preg_split( '/\r\n|\r|\n/', $rawText );
@@ -277,11 +299,16 @@ class ExtendedInputboxConfig {
 					$config['preload'] = $val;
 					break;
 				case 'popup-preload':
+<<<<<<< HEAD
 					$config['errors'][] = wfMessage( 'extendedinputbox-error-popup-preload-deprecated' )->text();
+=======
+					$config['errors'][] = 'Erreur : le paramètre "popup-preload" n\'est plus supporté. Veuillez utiliser juste "preload".';
+>>>>>>> origin/main
 					break;
 				case 'popup-title':
 					$config['title'] = $val;
 					break;
+<<<<<<< HEAD
 			case 'popup-text':
 				$config['text'] = $val;
 				break;
@@ -291,6 +318,11 @@ class ExtendedInputboxConfig {
 				// permet volontairement de masquer le marqueur visuel.
 				$config['requiredMarker'] = $val;
 				break;
+=======
+				case 'popup-text':
+					$config['text'] = $val;
+					break;
+>>>>>>> origin/main
 				case 'popup-skip-edit':
 				case 'skip-edit':
 					$config['skipEdit'] = ( strtolower( $val ) === 'yes' );
@@ -300,7 +332,11 @@ class ExtendedInputboxConfig {
 					if ( self::isValidCssColor( $val ) ) {
 						$config['buttonBgColor'] = $val;
 					} else {
+<<<<<<< HEAD
 						$config['errors'][] = wfMessage( 'extendedinputbox-error-invalid-bgcolor' )->text();
+=======
+						$config['errors'][] = 'Erreur : la valeur de "button-bgcolor" n\'est pas une couleur CSS valide.';
+>>>>>>> origin/main
 					}
 					break;
 				case 'button-border-color':
@@ -308,6 +344,7 @@ class ExtendedInputboxConfig {
 					if ( self::isValidCssColor( $val ) ) {
 						$config['buttonBorderColor'] = $val;
 					} else {
+<<<<<<< HEAD
 						$config['errors'][] = wfMessage( 'extendedinputbox-error-invalid-bordercolor' )->text();
 					}
 					break;
@@ -348,12 +385,21 @@ class ExtendedInputboxConfig {
 								break;
 							}
 						}
+=======
+						$config['errors'][] = 'Erreur : la valeur de "button-border-color" n\'est pas une couleur CSS valide.';
+					}
+					break;
+				case 'popup-field':
+					$parts = array_map( 'trim', explode( '|', $val ) );
+					if ( count( $parts ) >= 3 ) {
+>>>>>>> origin/main
 						$config['fields'][] = [
 							'name' => $parts[0],
 							'type' => $parts[1],
 							'label' => $parts[2],
 							'options' => $parts[3] ?? '',
 							'showIf' => $parts[4] ?? '',
+<<<<<<< HEAD
 							'default' => $parts[5] ?? '',
 							'separator' => isset( $parts[6] ) && $parts[6] !== '' ? $parts[6] : ', ',
 							'required' => isset( $parts[7] ) && strtolower( $parts[7] ) === 'yes',
@@ -361,6 +407,8 @@ class ExtendedInputboxConfig {
 							'maxlength' => ( $maxlength !== '' && ctype_digit( $maxlength ) ) ? (int)$maxlength : null,
 							'minlength' => ( $minlength !== '' && ctype_digit( $minlength ) ) ? (int)$minlength : null,
 							'help' => $parts[11] ?? '',
+=======
+>>>>>>> origin/main
 						];
 					}
 					break;
