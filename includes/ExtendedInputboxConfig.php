@@ -314,31 +314,17 @@ class ExtendedInputboxConfig {
 					}
 					break;
 				case 'popup-field':
-					// Format : name|type|label|options|show-if|default|separator|required|placeholder|maxlength|minlength|help
-					// - options     : liste "A,B,C" pour select/radio/checkbox, ou valeur
-					//                 initiale pour text/textarea (conservé pour compat
-					//                 ascendante ; "default" ci-dessous est prioritaire).
-					// - show-if     : condition d'affichage (show-if:champ=valeur).
-					// - default     : valeur préselectionnée/pré-remplie.
-					// - separator   : séparateur utilisé pour joindre les valeurs d'un
-					//                 champ checkbox multiple (défaut ", ").
-					// - required    : "yes"/"no" (nouveau, défaut "no") ; le champ doit
-					//                 avoir une valeur non vide (ou au moins une case
-					//                 cochée pour checkbox) pour pouvoir publier.
-					// - placeholder : texte indicatif affiché dans un champ vide
-					//                 (nouveau, text/textarea uniquement).
-					// - maxlength   : nombre maximal de caractères autorisés (nouveau,
-					//                 text/textarea uniquement ; ignoré si non numérique).
-					// - minlength   : nombre minimal de caractères requis (nouveau,
-					//                 text/textarea uniquement ; ignoré si non numérique).
-					// - help        : texte d'aide affiché via une bulle d'info à côté
-					//                 du champ (nouveau).
+					// Format : name|type|label|options|show-if|required
+					// - options  : liste "A,B,C" pour select/radio/checkbox, ou valeur
+					//              initiale pour text/textarea.
+					// - show-if  : condition d'affichage (show-if:champ=valeur).
+					// - required : "yes"/"no" (défaut "no") ; le champ doit avoir une
+					//              valeur non vide (ou au moins une case cochée pour
+					//              checkbox) pour pouvoir publier.
 					// Tous les segments au-delà du 3e sont optionnels, la config à
-					// 3-11 segments continue de fonctionner à l'identique.
+					// 3-5 segments continue de fonctionner à l'identique.
 					$parts = array_map( 'trim', explode( '|', $val ) );
 					if ( count( $parts ) >= 3 ) {
-						$maxlength = $parts[9] ?? '';
-						$minlength = $parts[10] ?? '';
 						// Un nom de champ dupliqué écraserait silencieusement le
 						// widget précédent (même clé dans dialog.widgets/fieldLayouts
 						// côté JS) et casserait show-if/preload-params de façon très
@@ -356,13 +342,7 @@ class ExtendedInputboxConfig {
 							'label' => $parts[2],
 							'options' => $parts[3] ?? '',
 							'showIf' => $parts[4] ?? '',
-							'default' => $parts[5] ?? '',
-							'separator' => isset( $parts[6] ) && $parts[6] !== '' ? $parts[6] : ', ',
-							'required' => isset( $parts[7] ) && strtolower( $parts[7] ) === 'yes',
-							'placeholder' => $parts[8] ?? '',
-							'maxlength' => ( $maxlength !== '' && ctype_digit( $maxlength ) ) ? (int)$maxlength : null,
-							'minlength' => ( $minlength !== '' && ctype_digit( $minlength ) ) ? (int)$minlength : null,
-							'help' => $parts[11] ?? '',
+							'required' => isset( $parts[5] ) && strtolower( $parts[5] ) === 'yes',
 						];
 					}
 					break;
