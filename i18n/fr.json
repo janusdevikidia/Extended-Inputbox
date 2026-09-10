@@ -18,7 +18,5 @@
 	"extendedinputbox-error-invalid-bordercolor": "Erreur : la valeur de « button-border-color » n'est pas une couleur CSS valide.",
 	"extendedinputbox-error-duplicate-field": "Erreur : le nom de champ « $1 » est utilisé plusieurs fois dans ce formulaire.",
 	"extendedinputbox-required-marker": "*",
-	"extendedinputbox-error-field-required": "Le champ « $1 » est obligatoire.",
-	"extendedinputbox-error-field-minlength": "Le champ « $1 » doit contenir au moins $2 caractères.",
-	"extendedinputbox-error-field-maxlength": "Le champ « $1 » ne doit pas dépasser $2 caractères."
+	"extendedinputbox-error-field-required": "Le champ « $1 » est obligatoire."
 }

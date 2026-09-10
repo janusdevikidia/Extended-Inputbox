@@ -187,32 +187,22 @@
 		return result;
 	}
 
-	// Options OOUI natives communes aux champs texte libre (text/textarea) :
-	// placeholder et maxlength sont supportés directement par TextInputWidget
-	// (et donc par MultilineTextInputWidget, qui en hérite). minlength n'a pas
-	// d'équivalent natif OOUI : il est vérifié manuellement à la soumission
-	// (voir validateFields ci-dessous), tout comme un filet de sécurité pour
-	// maxlength/required au cas où l'utilisateur contournerait la saisie
-	// (collage, autofill...).
+	// Seule option OOUI native encore utilisée pour les champs texte libre
+	// (text/textarea) : "required". OOUI gère alors l'attribut requis/
+	// aria-required ; un filet de sécurité reste posé côté validateFields
+	// au cas où l'utilisateur contournerait la saisie (collage, autofill...).
 	function textInputExtras( field ) {
 		var extras = {};
-		if ( field.placeholder ) {
-			extras.placeholder = field.placeholder;
-		}
-		if ( field.maxlength ) {
-			extras.maxLength = field.maxlength;
-		}
 		if ( field.required ) {
 			extras.required = true;
 		}
 		return extras;
 	}
 
-	// Valide required/minlength/maxlength pour les champs actuellement visibles
-	// (un champ masqué par show-if n'est pas requis, cf. formData[name] = ''
-	// pour les champs masqués dans getActionProcess). Retourne le message
-	// d'erreur (mw.msg) de la première violation trouvée, ou null si tout est
-	// valide.
+	// Valide "required" pour les champs actuellement visibles (un champ
+	// masqué par show-if n'est pas requis, cf. formData[name] = '' pour les
+	// champs masqués dans getActionProcess). Retourne le message d'erreur
+	// (mw.msg) de la première violation trouvée, ou null si tout est valide.
 	function validateFields( config, dialog ) {
 		var fields = config.fields;
 		for ( var i = 0; i < fields.length; i++ ) {
@@ -222,16 +212,9 @@
 
 			var rawVal = dialog.widgets[ field.name ].getValue();
 			var isEmpty = Array.isArray( rawVal ) ? rawVal.length === 0 : !rawVal;
-			var strVal = Array.isArray( rawVal ) ? rawVal.join( '' ) : ( rawVal || '' );
 
 			if ( field.required && isEmpty ) {
 				return mw.msg( 'extendedinputbox-error-field-required', field.label );
-			}
-			if ( !isEmpty && field.minlength && strVal.length < field.minlength ) {
-				return mw.msg( 'extendedinputbox-error-field-minlength', field.label, field.minlength );
-			}
-			if ( !isEmpty && field.maxlength && strVal.length > field.maxlength ) {
-				return mw.msg( 'extendedinputbox-error-field-maxlength', field.label, field.maxlength );
 			}
 		}
 		return null;
@@ -278,42 +261,41 @@
 			}
 
 			config.fields.forEach( function ( field ) {
-				// "default" (nouveau) a priorité sur "options" comme valeur initiale ;
-				// "options" reste utilisé tel quel pour les listes select/radio/checkbox,
-				// et continue de servir de valeur initiale pour text/textarea si aucun
-				// "default" explicite n'est fourni (compatibilité ascendante).
+				// "options" sert de liste de choix pour select/radio/checkbox, et de
+				// valeur initiale pour text/textarea. Aucun des types de champ ne
+				// dispose d'une valeur présélectionnée distincte : select/radio
+				// s'ouvrent sur leur premier choix (comportement natif OOUI) et
+				// checkbox démarre sans case cochée.
 				var widget;
 				if ( field.type === 'select' ) {
 					var opts = field.options.split( ',' ).map( function ( o ) {
 						var v = o.trim(); return { data: v, label: v };
 					} );
-					widget = new OO.ui.DropdownInputWidget( { options: opts, value: field.default || undefined } );
+					widget = new OO.ui.DropdownInputWidget( { options: opts } );
 				} else if ( field.type === 'radio' ) {
 					var opts = field.options.split( ',' ).map( function ( o ) {
 						var v = o.trim(); return { data: v, label: v };
 					} );
-					widget = new OO.ui.RadioSelectInputWidget( { options: opts, value: field.default || undefined } );
+					widget = new OO.ui.RadioSelectInputWidget( { options: opts } );
 				} else if ( field.type === 'checkbox' || field.type === 'checkboxes' ) {
 					var opts = field.options ? field.options.split( ',' ).map( function ( o ) {
 						var v = o.trim(); return { data: v, label: v };
 					} ) : [];
-					var defaultVals = field.default ? field.default.split( ',' ).map( function ( v ) { return v.trim(); } ) : [];
-					widget = new OO.ui.CheckboxMultiselectInputWidget( { options: opts, value: defaultVals } );
+					widget = new OO.ui.CheckboxMultiselectInputWidget( { options: opts } );
 				} else if ( field.type === 'textarea' ) {
 					widget = new OO.ui.MultilineTextInputWidget( $.extend( {
-						value: field.default || field.options
+						value: field.options
 					}, textInputExtras( field ) ) );
 				} else {
 					widget = new OO.ui.TextInputWidget( $.extend( {
-						value: field.default || field.options
+						value: field.options
 					}, textInputExtras( field ) ) );
 				}
 
 				// "required" est aussi posé sur les autres types de widgets (select,
 				// radio, checkbox) quand le champ le supporte nativement (OOUI gère
 				// l'attribut requis/aria-required en conséquence pour ces widgets-là
-				// aussi), sans effet sur maxlength/minlength/placeholder qui ne
-				// concernent que du texte libre.
+				// aussi).
 				if ( field.required && typeof widget.setRequired === 'function' ) {
 					widget.setRequired( true );
 				}
@@ -324,10 +306,6 @@
 					label: field.required && requiredMarker ? field.label + ' ' + requiredMarker : field.label,
 					align: 'top'
 				};
-				if ( field.help ) {
-					layoutConfig.help = field.help;
-					layoutConfig.helpInline = true;
-				}
 				var layout = new OO.ui.FieldLayout( widget, layoutConfig );
 
 				dialog.widgets[ field.name ] = widget;
@@ -430,10 +408,10 @@
 			var dialog = this;
 			if ( action === 'save' ) {
 				return new OO.ui.Process( function () {
-					// Validation required/minlength/maxlength AVANT tout traitement
-					// (préchargement, magic words, appel API...) : une violation
-					// bloque immédiatement la publication et affiche l'erreur dans
-					// la popup, sans effet de bord (pas de requête envoyée).
+					// Validation "required" AVANT tout traitement (préchargement,
+					// magic words, appel API...) : une violation bloque immédiatement
+					// la publication et affiche l'erreur dans la popup, sans effet de
+					// bord (pas de requête envoyée).
 					var validationError = validateFields( config, dialog );
 					if ( validationError ) {
 						return $.Deferred().reject( new OO.ui.Error( validationError ) );
@@ -443,8 +421,10 @@
 					config.fields.forEach( function ( field ) {
 						if ( dialog.fieldLayouts[ field.name ].isVisible() ) {
 							var rawVal = dialog.widgets[ field.name ].getValue();
-							var separator = field.separator || ', ';
-							formData[ field.name ] = Array.isArray( rawVal ) ? rawVal.join( separator ) : ( rawVal || '' );
+							// Les valeurs cochées d'un champ checkbox multiple sont
+							// toujours jointes avec ", " : le séparateur personnalisable
+							// a été retiré du langage pour rester simple.
+							formData[ field.name ] = Array.isArray( rawVal ) ? rawVal.join( ', ' ) : ( rawVal || '' );
 						} else {
 							formData[ field.name ] = '';
 						}
