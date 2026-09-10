@@ -1,6 +1,6 @@
 {
     "name": "Extended-Inputbox",
-    "version": "2.0.0",
+    "version": "2.5.0",
     "author": "Célian & Janus",
     "type": "other",
     "manifest_version": 2,
@@ -54,9 +54,7 @@
                 "extendedinputbox-error-preload-fetch",
                 "extendedinputbox-error-publish",
                 "extendedinputbox-required-marker",
-                "extendedinputbox-error-field-required",
-                "extendedinputbox-error-field-minlength",
-                "extendedinputbox-error-field-maxlength"
+                "extendedinputbox-error-field-required"
             ]
         }
     },

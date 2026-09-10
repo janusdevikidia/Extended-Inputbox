@@ -18,7 +18,5 @@
 	"extendedinputbox-error-invalid-bordercolor": "Error: the value of \"button-border-color\" is not a valid CSS color.",
 	"extendedinputbox-error-duplicate-field": "Error: the field name \"$1\" is used more than once in this form.",
 	"extendedinputbox-required-marker": "*",
-	"extendedinputbox-error-field-required": "The field \"$1\" is required.",
-	"extendedinputbox-error-field-minlength": "The field \"$1\" must contain at least $2 characters.",
-	"extendedinputbox-error-field-maxlength": "The field \"$1\" must not exceed $2 characters."
+	"extendedinputbox-error-field-required": "The field \"$1\" is required."
 }

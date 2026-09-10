@@ -281,12 +281,10 @@
 				}
 			} else if ( key === 'popup-field' ) {
 				// Miroir exact de ExtendedInputboxConfig::parseSingleConfig() côté PHP :
-				// name|type|label|options|show-if|default|separator|required|placeholder|maxlength|minlength|help
+				// name|type|label|options|show-if|required
 				// (tout ce qui suit "label" est optionnel).
 				var parts = val.split( '|' ).map( function ( s ) { return s.trim(); } );
 				if ( parts.length >= 3 ) {
-					var maxlengthRaw = parts[9] || '';
-					var minlengthRaw = parts[10] || '';
 					// Miroir exact de la détection PHP (ExtendedInputboxConfig::parseSingleConfig) :
 					// un nom de champ dupliqué écrase silencieusement le widget précédent.
 					var isDuplicateName = config.fields.some( function ( f ) { return f.name === parts[0]; } );
@@ -299,13 +297,7 @@
 						label: parts[2],
 						options: parts[3] || '',
 						showIf: parts[4] || '',
-						default: parts[5] || '',
-						separator: parts[6] || ', ',
-						required: ( parts[7] || '' ).toLowerCase() === 'yes',
-						placeholder: parts[8] || '',
-						maxlength: ( /^\d+$/.test( maxlengthRaw ) ) ? parseInt( maxlengthRaw, 10 ) : null,
-						minlength: ( /^\d+$/.test( minlengthRaw ) ) ? parseInt( minlengthRaw, 10 ) : null,
-						help: parts[11] || ''
+						required: ( parts[5] || '' ).toLowerCase() === 'yes'
 					} );
 				}
 			} else {
