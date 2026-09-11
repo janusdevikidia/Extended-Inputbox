@@ -12,7 +12,11 @@
     },
     "AutoloadClasses": {
         "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php",
-        "ExtendedInputboxConfig": "includes/ExtendedInputboxConfig.php"
+        "ExtendedInputboxConfig": "includes/ExtendedInputboxConfig.php",
+        "SpecialFormBuilder": "includes/SpecialFormBuilder.php"
+    },
+    "SpecialPages": {
+        "FormBuilder": "SpecialFormBuilder"
     },
     "ResourceFileModulePaths": {
         "localBasePath": "",
@@ -56,6 +60,93 @@
                 "extendedinputbox-required-marker",
                 "extendedinputbox-error-field-required"
             ]
+        },
+        "ext.extendedInputbox.formbuilder.styles": {
+            "styles": [
+                "Modules/ext.extendedInputbox.formbuilder.css"
+            ]
+        },
+        "ext.extendedInputbox.formbuilder": {
+            "scripts": [
+                "Modules/ext.extendedInputbox.formbuilder.js"
+            ],
+            "styles": [
+                "Modules/ext.extendedInputbox.formbuilder.css"
+            ],
+            "dependencies": [
+                "oojs-ui-core",
+                "oojs-ui-widgets",
+                "oojs-ui-windows",
+                "mediawiki.api",
+                "mediawiki.util",
+                "mediawiki.widgets",
+                "mediawiki.jqueryMsg"
+            ],
+            "messages": [
+                "extendedinputbox-formbuilder",
+                "extendedinputbox-formbuilder-title",
+                "extendedinputbox-formbuilder-intro",
+                "extendedinputbox-formbuilder-section-general",
+                "extendedinputbox-formbuilder-section-fields",
+                "extendedinputbox-formbuilder-section-target",
+                "extendedinputbox-formbuilder-field-type",
+                "extendedinputbox-formbuilder-field-page",
+                "extendedinputbox-formbuilder-field-prefix",
+                "extendedinputbox-formbuilder-field-default",
+                "extendedinputbox-formbuilder-field-buttonlabel",
+                "extendedinputbox-formbuilder-field-preload",
+                "extendedinputbox-formbuilder-field-preloadparams",
+                "extendedinputbox-formbuilder-field-summary",
+                "extendedinputbox-formbuilder-field-popuptitle",
+                "extendedinputbox-formbuilder-field-popuptext",
+                "extendedinputbox-formbuilder-field-requiredmarker",
+                "extendedinputbox-formbuilder-field-hidemarker",
+                "extendedinputbox-formbuilder-field-skipedit",
+                "extendedinputbox-formbuilder-field-bgcolor",
+                "extendedinputbox-formbuilder-field-bordercolor",
+                "extendedinputbox-formbuilder-type-none",
+                "extendedinputbox-formbuilder-type-search",
+                "extendedinputbox-formbuilder-type-create",
+                "extendedinputbox-formbuilder-type-comment",
+                "extendedinputbox-formbuilder-type-move",
+                "extendedinputbox-formbuilder-field-row-name",
+                "extendedinputbox-formbuilder-field-row-label",
+                "extendedinputbox-formbuilder-field-row-options",
+                "extendedinputbox-formbuilder-field-row-showif",
+                "extendedinputbox-formbuilder-field-row-required",
+                "extendedinputbox-formbuilder-field-type-text",
+                "extendedinputbox-formbuilder-field-type-textarea",
+                "extendedinputbox-formbuilder-field-type-select",
+                "extendedinputbox-formbuilder-field-type-radio",
+                "extendedinputbox-formbuilder-field-type-checkbox",
+                "extendedinputbox-formbuilder-btn-addfield",
+                "extendedinputbox-formbuilder-btn-removefield",
+                "extendedinputbox-formbuilder-btn-moveup",
+                "extendedinputbox-formbuilder-btn-movedown",
+                "extendedinputbox-formbuilder-no-fields",
+                "extendedinputbox-formbuilder-drag-hint",
+                "extendedinputbox-formbuilder-generated-label",
+                "extendedinputbox-formbuilder-field-target-title",
+                "extendedinputbox-formbuilder-btn-load",
+                "extendedinputbox-formbuilder-btn-insert",
+                "extendedinputbox-formbuilder-btn-preview",
+                "extendedinputbox-formbuilder-btn-publish",
+                "extendedinputbox-formbuilder-wikitext-label",
+                "extendedinputbox-formbuilder-preview-label",
+                "extendedinputbox-formbuilder-preview-loading",
+                "extendedinputbox-formbuilder-notice-newpage",
+                "extendedinputbox-formbuilder-notice-loaded",
+                "extendedinputbox-formbuilder-notice-inserted",
+                "extendedinputbox-formbuilder-notice-published",
+                "extendedinputbox-formbuilder-error-notitle",
+                "extendedinputbox-formbuilder-error-load",
+                "extendedinputbox-formbuilder-error-preview",
+                "extendedinputbox-formbuilder-error-publish",
+                "extendedinputbox-formbuilder-error-noedit",
+                "extendedinputbox-formbuilder-error-noinsert",
+                "extendedinputbox-formbuilder-confirm-overwrite",
+                "extendedinputbox-formbuilder-summary-default"
+            ]
         }
     },
     "Hooks": {
@@ -66,5 +157,8 @@
         "ExtendedInputbox": [
             "i18n"
         ]
+    },
+    "ExtensionMessagesFiles": {
+    "FormBuilderAlias": "FormBuilder.alias.php"
     }
 }

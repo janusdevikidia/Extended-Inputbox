@@ -183,6 +183,37 @@ Les formats usuels de couleur CSS sont acceptés (`#3366cc`, `rgb(...)`,
 `hsl(...)` et les noms CSS). Une couleur invalide laisse le formulaire
 utilisable et affiche une erreur sous celui-ci.
 
+## Special:FormBuilder
+
+Cette extension fournit aussi une page spéciale **Special:FormBuilder** : une
+interface visuelle pour construire un bloc `<inputbox>` (avec ses champs de
+popup) sans écrire le wikitexte à la main, puis l'insérer directement dans
+une page du wiki.
+
+Déroulé :
+
+1. **Construction** : renseignez les paramètres généraux (`type`, `page`,
+   `buttonlabel`, `preload`, couleurs de bouton, etc.) et ajoutez des champs
+   de popup (`popup-field`) via le bouton « Ajouter un champ ». Les lignes de
+   champs peuvent être réordonnées par glisser-déposer. Le wikitexte
+   correspondant est généré en direct dans le panneau de droite du
+   constructeur.
+2. **Chargement de la page cible** : saisissez le titre d'une page du wiki
+   puis cliquez sur « Charger la page ». Le wikitexte actuel de la page
+   s'affiche dans la zone d'édition ; si la page n'existe pas encore, une
+   notification l'indique et elle sera créée à la publication.
+3. **Insertion** : placez le curseur à l'endroit souhaité dans la zone
+   d'édition puis cliquez sur « Insérer ici » pour y injecter le bloc
+   `<inputbox>` généré.
+4. **Prévisualisation et publication** : « Prévisualiser » affiche un rendu
+   de la page via l'API (`action=parse`) ; « Publier » enregistre la page
+   (`action=edit`, avec jeton CSRF) puis redirige vers celle-ci.
+
+L'accès à `Special:FormBuilder` nécessite le droit `edit` ; les vérifications
+propres à la page cible (protection, blocage, conflit d'édition...) restent
+appliquées par l'API MediaWiki au moment de la publication et sont signalées
+dans l'interface.
+
 ## Performances et fonctionnement
 
 Les configurations sont analysées côté serveur pendant le rendu : les couleurs
