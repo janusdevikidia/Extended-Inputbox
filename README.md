@@ -183,6 +183,44 @@ Les formats usuels de couleur CSS sont acceptés (`#3366cc`, `rgb(...)`,
 `hsl(...)` et les noms CSS). Une couleur invalide laisse le formulaire
 utilisable et affiche une erreur sous celui-ci.
 
+## Nouveautés de la 2.5.1
+
+Cette version corrige et enrichit **Special:FormBuilder**, sans changer le
+format `<inputbox>` lui-même (aucune migration nécessaire depuis la 2.5.0) :
+
+* **Message d'erreur de droits détaillé.** Auparavant, le panneau « Page
+  cible » affichait systématiquement le même message générique (« Vous
+  n'avez pas les droits nécessaires pour modifier cette page ») dès que le
+  test de permission échouait, sans indiquer la raison réelle (page
+  protégée, blocage, wiki en lecture seule, filtre anti-abus...). Ce test
+  est un comportement normal de MediaWiki — pas un bug — mais le message
+  ne donnait aucun moyen de comprendre *pourquoi*. Le détail renvoyé par
+  l'API est maintenant affiché quand il est disponible (ex. « Vous n'avez
+  pas les droits nécessaires pour modifier cette page : Cette page a été
+  protégée... »), aussi bien au chargement qu'à la publication.
+* **Conflit de modification explicite.** Un échec `editconflict` lors de la
+  publication affiche désormais un message dédié invitant à recharger la
+  page cible, plutôt que le message générique précédent.
+* **Bouton « Copier le wikitexte ».** Le bloc « Wikitexte généré » propose
+  désormais un bouton de copie presse-papiers, utilisable même sans avoir
+  chargé de page cible ni en avoir les droits d'édition — utile pour
+  préparer un formulaire à transmettre à quelqu'un d'autre (ex. un
+  administrateur).
+* **Validation en direct du formulaire en construction.** Une zone
+  d'avertissement apparaît sous le wikitexte généré pour signaler, en
+  temps réel : une couleur de bouton invalide (`button-bgcolor=`,
+  `button-border-color=`), un nom de champ dupliqué, ou un champ de
+  popup auquel il manque un nom et/ou un libellé (et qui, de ce fait,
+  n'apparaît pas dans le wikitexte généré). Ces avertissements reflètent
+  exactement les contrôles déjà appliqués côté serveur
+  (`ExtendedInputboxConfig::parseSingleConfig`) ; ils préviennent avant la
+  publication plutôt que de laisser l'auteur découvrir le problème après
+  coup sur la page cible.
+* **Indicateur de statut pendant les appels réseau.** Un petit indicateur
+  textuel (« Chargement… », « Génération de l'aperçu… », « Publication… »)
+  s'affiche désormais à côté du bouton « Charger la page » pendant les
+  appels à l'API.
+
 ## Special:FormBuilder
 
 Cette extension fournit aussi une page spéciale **Special:FormBuilder** : une

@@ -127,3 +127,29 @@
 .eib-fb-status.eib-fb-status-error {
 	color: #d33;
 }
+
+/* Avertissements de validation "live" (couleur invalide, champ incomplet,
+ * nom de champ dupliqué...) affichés sous le wikitexte généré. Palette
+ * "avertissement" (orangé) volontairement distincte de .extended-inputbox-error
+ * (rouge, réservée aux erreurs bloquantes côté rendu final) : ici, rien
+ * n'empêche de continuer à travailler, ce sont des signaux préventifs. */
+.eib-fb-validation {
+	margin-top: 0.5em;
+	border: 1px solid #ffe2a8;
+	background: #fef6e7;
+	border-radius: 2px;
+	padding: 0.5em 0.8em;
+}
+
+.eib-fb-validation.eib-fb-validation-hidden {
+	display: none;
+}
+
+.eib-fb-validation-item {
+	color: #8a6d00;
+	font-size: 0.9em;
+}
+
+.eib-fb-validation-item + .eib-fb-validation-item {
+	margin-top: 0.3em;
+}

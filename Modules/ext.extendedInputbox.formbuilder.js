@@ -58,10 +58,35 @@
 	}
 
 	/**
+	 * Convertit un tableau d'erreurs au format `errorformat=plaintext` de
+	 * l'API MediaWiki (utilisé aussi bien pour un échec de requête que pour
+	 * le résultat d'un test `intestactions`) en une chaîne lisible unique.
+	 * Chaque entrée est un objet `{ code, text, module }` ; on ignore les
+	 * entrées sans texte exploitable plutôt que d'insérer une chaîne vide.
+	 *
+	 * @param {Array|undefined} errArray
+	 * @return {string} Chaîne vide si rien d'exploitable.
+	 */
+	function errorsToText( errArray ) {
+		if ( !Array.isArray( errArray ) || !errArray.length ) {
+			return '';
+		}
+		return errArray.map( function ( e ) {
+			return ( e && ( e.text || e.html || e.message ) ) || '';
+		} ).filter( Boolean ).join( ' ' );
+	}
+
+	/**
 	 * Extrait un message d'erreur lisible d'un échec mw.Api, quel que soit
-	 * le format (chaîne de code seule, ou objet d'erreur détaillé).
+	 * le format renvoyé : `errorformat=plaintext` (privilégié, le plus
+	 * précis), objet d'erreur "bc" classique, exception transport, ou
+	 * simple code d'erreur en dernier recours.
 	 */
 	function extractApiError( code, data ) {
+		var fromErrors = data && errorsToText( data.errors );
+		if ( fromErrors ) {
+			return fromErrors;
+		}
 		if ( data && data.error && data.error.info ) {
 			return data.error.info;
 		}
@@ -69,6 +94,60 @@
 			return data.exception;
 		}
 		return code || 'unknown-error';
+	}
+
+	/**
+	 * Miroir client de ExtendedInputboxConfig::isValidCssColor() (PHP) /
+	 * de la version déjà utilisée par ext.extendedInputbox.fallback.js : on
+	 * délègue au moteur CSS du navigateur via CSS.supports() plutôt que de
+	 * dupliquer la liste de mots-clés et la grammaire rgb()/hsl(), afin que
+	 * la validation "live" du constructeur reste toujours cohérente avec ce
+	 * que le navigateur (et donc le rendu final) accepte réellement.
+	 *
+	 * @param {string} val
+	 * @return {boolean}
+	 */
+	function isValidCssColor( val ) {
+		return typeof CSS !== 'undefined' && CSS.supports( 'color', ( val || '' ).trim() );
+	}
+
+	/**
+	 * Contrôles "live" côté client, appliqués à chaque régénération du
+	 * wikitexte : ils n'empêchent jamais de construire ou d'insérer le
+	 * formulaire (la validation faisant foi reste côté serveur, voir
+	 * ExtendedInputboxConfig::parseSingleConfig), mais préviennent l'auteur
+	 * *avant* la publication plutôt que de le laisser découvrir l'erreur en
+	 * rechargeant la page cible. Retourne une liste de messages (déjà
+	 * traduits) ; liste vide si tout est valide.
+	 *
+	 * @return {string[]}
+	 */
+	function getValidationWarnings() {
+		var warnings = [];
+		var seenNames = {};
+
+		state.fields.forEach( function ( field, idx ) {
+			if ( !field.name || !field.label ) {
+				// Champ silencieusement ignoré par generateWikitext() : sans cet
+				// avertissement, l'auteur pourrait croire à tort qu'il fait partie
+				// du wikitexte généré.
+				warnings.push( mw.msg( 'extendedinputbox-formbuilder-warning-incomplete-field', idx + 1 ) );
+				return;
+			}
+			if ( Object.prototype.hasOwnProperty.call( seenNames, field.name ) ) {
+				warnings.push( mw.msg( 'extendedinputbox-error-duplicate-field', field.name ) );
+			}
+			seenNames[ field.name ] = true;
+		} );
+
+		if ( state.general.bgColor && !isValidCssColor( state.general.bgColor ) ) {
+			warnings.push( mw.msg( 'extendedinputbox-error-invalid-bgcolor' ) );
+		}
+		if ( state.general.borderColor && !isValidCssColor( state.general.borderColor ) ) {
+			warnings.push( mw.msg( 'extendedinputbox-error-invalid-bordercolor' ) );
+		}
+
+		return warnings;
 	}
 
 	// ---------------------------------------------------------------------
@@ -145,11 +224,24 @@
 
 	var FIELD_TYPES = [ 'text', 'textarea', 'select', 'radio', 'checkbox' ];
 	var $generatedTextarea;
+	var $validationBox;
 
 	function refreshGeneratedWikitext() {
 		if ( $generatedTextarea ) {
 			$generatedTextarea.val( generateWikitext() );
 		}
+		refreshValidationBox();
+	}
+
+	function refreshValidationBox() {
+		if ( !$validationBox ) {
+			return;
+		}
+		var warnings = getValidationWarnings();
+		$validationBox.empty().toggleClass( 'eib-fb-validation-hidden', !warnings.length );
+		warnings.forEach( function ( msg ) {
+			$validationBox.append( $( '<div>' ).addClass( 'eib-fb-validation-item' ).text( msg ) );
+		} );
 	}
 
 	function buildGeneralPanel() {
@@ -397,15 +489,81 @@
 		);
 	}
 
+	/**
+	 * Copie une chaîne dans le presse-papiers. Tente l'API asynchrone
+	 * moderne (nécessite un contexte sécurisé - https/localhost) puis se
+	 * replie sur `document.execCommand( 'copy' )` via une textarea
+	 * temporaire hors écran pour les navigateurs/contextes plus anciens.
+	 * Renvoie une promesse jQuery résolue/rejetée sans argument.
+	 *
+	 * @param {string} text
+	 * @return {jQuery.Promise}
+	 */
+	function copyToClipboard( text ) {
+		var deferred = $.Deferred();
+
+		if ( navigator.clipboard && window.isSecureContext ) {
+			navigator.clipboard.writeText( text ).then( deferred.resolve, function () {
+				deferred.reject();
+			} );
+			return deferred.promise();
+		}
+
+		var $tmp = $( '<textarea>' )
+			.val( text )
+			.css( { position: 'fixed', top: '-1000px', left: '-1000px', opacity: 0 } )
+			.appendTo( 'body' );
+		$tmp[ 0 ].focus();
+		$tmp[ 0 ].select();
+		try {
+			if ( document.execCommand( 'copy' ) ) {
+				deferred.resolve();
+			} else {
+				deferred.reject();
+			}
+		} catch ( e ) {
+			deferred.reject();
+		}
+		$tmp.remove();
+
+		return deferred.promise();
+	}
+
 	function buildPreviewPanel() {
 		$generatedTextarea = $( '<textarea>' )
 			.addClass( 'eib-fb-generated-wikitext' )
 			.attr( 'readonly', true );
+
+		$validationBox = $( '<div>' ).addClass( 'eib-fb-validation eib-fb-validation-hidden' );
+
+		var $copyStatus = $( '<span>' ).addClass( 'eib-fb-status' );
+
+		// Bouton volontairement indépendant de tout état "page cible" : il
+		// fonctionne même sans titre chargé et même sans droit d'édition sur
+		// une éventuelle page cible, pour permettre de préparer un bloc
+		// <inputbox> à transmettre à quelqu'un d'autre (ex. un sysop) qui
+		// l'insérera lui-même.
+		var copyBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-formbuilder-btn-copy' ),
+			icon: 'copy'
+		} ).on( 'click', function () {
+			copyToClipboard( generateWikitext() ).done( function () {
+				$copyStatus.removeClass( 'eib-fb-status-error' ).text( mw.msg( 'extendedinputbox-formbuilder-notice-copied' ) );
+			} ).fail( function () {
+				$copyStatus.addClass( 'eib-fb-status-error' ).text( mw.msg( 'extendedinputbox-formbuilder-error-copy-failed' ) );
+			} );
+			setTimeout( function () {
+				$copyStatus.text( '' );
+			}, 4000 );
+		} );
+
 		refreshGeneratedWikitext();
 
 		return $( '<div>' ).append(
 			$( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-generated-label' ) ),
-			$generatedTextarea
+			$generatedTextarea,
+			$validationBox,
+			$( '<div>' ).addClass( 'eib-fb-toolbar' ).append( copyBtn.$element, $copyStatus )
 		);
 	}
 
@@ -473,9 +631,14 @@
 		}
 
 		clearNotice();
-		setStatus( '' );
+		setStatus( mw.msg( 'extendedinputbox-formbuilder-status-loading' ) );
 		loadBtn.setDisabled( true );
 
+		// errorformat=plaintext : demande à l'API de fournir, pour chaque
+		// erreur (y compris le résultat détaillé de intestactions), un champ
+		// `.text` déjà traduit et prêt à afficher, plutôt qu'un simple code
+		// ("protectedpage", "blocked"...) que l'utilisateur ne peut pas
+		// interpréter. Voir extractApiError()/errorsToText().
 		api.get( {
 			action: 'query',
 			prop: 'revisions|info',
@@ -484,6 +647,7 @@
 			intestactions: 'edit',
 			titles: title,
 			redirects: 1,
+			errorformat: 'plaintext',
 			formatversion: 2
 		} ).done( function ( res ) {
 			var page = res && res.query && res.query.pages && res.query.pages[ 0 ];
@@ -507,11 +671,24 @@
 				var content = page.revisions && page.revisions[ 0 ] && page.revisions[ 0 ].slots &&
 					page.revisions[ 0 ].slots.main ? page.revisions[ 0 ].slots.main.content : '';
 				$targetTextarea.val( content );
-				if ( !target.canEdit ) {
-					showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noedit' ), true );
-				} else {
-					showNotice( mw.msg( 'extendedinputbox-formbuilder-notice-loaded' ), false );
-				}
+			}
+
+			if ( !target.canEdit ) {
+				// Auparavant : message générique unique, quelle que soit la
+				// cause réelle (protection, blocage, wiki en lecture seule,
+				// filtre anti-abus...). On exploite maintenant le détail
+				// renvoyé par intestactions ; le message générique ne sert
+				// plus que de filet de sécurité si l'API ne renvoie aucun
+				// texte exploitable.
+				var detail = errorsToText( actions.edit );
+				showNotice(
+					detail ?
+						mw.msg( 'extendedinputbox-formbuilder-error-noedit-detailed', detail ) :
+						mw.msg( 'extendedinputbox-formbuilder-error-noedit' ),
+					true
+				);
+			} else if ( !page.missing ) {
+				showNotice( mw.msg( 'extendedinputbox-formbuilder-notice-loaded' ), false );
 			}
 
 			$previewBox.empty();
@@ -519,6 +696,7 @@
 			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-load', extractApiError( code, data ) ), true );
 		} ).always( function () {
 			loadBtn.setDisabled( false );
+			setStatus( '' );
 		} );
 	}
 
@@ -559,7 +737,7 @@
 		}
 
 		clearNotice();
-		setStatus( '' );
+		setStatus( mw.msg( 'extendedinputbox-formbuilder-status-previewing' ) );
 		previewBtn.setDisabled( true );
 		$previewBox.empty().append( $( '<em>' ).text( mw.msg( 'extendedinputbox-formbuilder-preview-loading' ) ) );
 
@@ -570,6 +748,7 @@
 			pst: 1,
 			disablelimitreport: 1,
 			prop: 'text',
+			errorformat: 'plaintext',
 			formatversion: 2
 		} ).done( function ( res ) {
 			var html = res && res.parse && res.parse.text;
@@ -582,6 +761,7 @@
 			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-preview', extractApiError( code, data ) ), true );
 		} ).always( function () {
 			previewBtn.setDisabled( false );
+			setStatus( '' );
 		} );
 	}
 
@@ -590,13 +770,15 @@
 			action: 'edit',
 			title: target.title,
 			text: $targetTextarea.val(),
-			summary: state.general.summary || mw.msg( 'extendedinputbox-formbuilder-summary-default' )
+			summary: state.general.summary || mw.msg( 'extendedinputbox-formbuilder-summary-default' ),
+			errorformat: 'plaintext'
 		};
 		if ( target.baseTimestamp ) {
 			editData.basetimestamp = target.baseTimestamp;
 		}
 
 		publishBtn.setDisabled( true );
+		setStatus( mw.msg( 'extendedinputbox-formbuilder-status-publishing' ) );
 
 		api.postWithToken( 'csrf', editData ).done( function ( res ) {
 			if ( res && res.edit && res.edit.result === 'Success' ) {
@@ -610,17 +792,30 @@
 			}
 		} ).fail( function ( code, data ) {
 			var msg;
-			if ( code === 'permissiondenied' || code === 'protectedpage' || code === 'cantcreate' ||
+			var detail = extractApiError( code, data );
+			if ( code === 'editconflict' ) {
+				// Cas spécifique : la formulation générique "error-publish"
+				// avec le code brut ("editconflict") n'indique pas à
+				// l'utilisateur ce qu'il doit faire. On l'invite explicitement
+				// à recharger la page cible (son wikitexte texte a changé
+				// depuis "Charger la page").
+				msg = mw.msg( 'extendedinputbox-formbuilder-error-editconflict' );
+			} else if ( code === 'permissiondenied' || code === 'protectedpage' || code === 'cantcreate' ||
 				code === 'blocked' || code === 'readonly'
 			) {
-				msg = mw.msg( 'extendedinputbox-formbuilder-error-noedit' );
-			} else if ( code === 'editconflict' ) {
-				msg = mw.msg( 'extendedinputbox-formbuilder-error-publish', code );
+				// Comme pour le chargement, on affiche le détail réel renvoyé
+				// par l'API (raison de la protection, durée du blocage, etc.)
+				// quand il est disponible, au lieu du seul message générique.
+				msg = detail && detail !== code ?
+					mw.msg( 'extendedinputbox-formbuilder-error-noedit-detailed', detail ) :
+					mw.msg( 'extendedinputbox-formbuilder-error-noedit' );
 			} else {
-				msg = mw.msg( 'extendedinputbox-formbuilder-error-publish', extractApiError( code, data ) );
+				msg = mw.msg( 'extendedinputbox-formbuilder-error-publish', detail );
 			}
 			showNotice( msg, true );
 			publishBtn.setDisabled( false );
+		} ).always( function () {
+			setStatus( '' );
 		} );
 	}
 
@@ -661,9 +856,17 @@
 			flags: [ 'progressive' ]
 		} ).on( 'click', loadPage );
 
+		// $statusSpan était déclaré et utilisé par setStatus() mais jamais
+		// créé ni inséré dans le DOM : setStatus() était donc un no-op
+		// silencieux depuis le début (voir la garde `if ( !$statusSpan )`).
+		// On l'instancie ici pour donner un retour visuel discret pendant
+		// les appels API (chargement, aperçu, publication).
+		$statusSpan = $( '<span>' ).addClass( 'eib-fb-status' );
+
 		var $titleRow = $( '<div>' ).addClass( 'eib-fb-toolbar' ).append(
 			targetTitleWidget.$element,
-			loadBtn.$element
+			loadBtn.$element,
+			$statusSpan
 		);
 
 		$targetTextarea = $( '<textarea>' ).addClass( 'eib-fb-target-textarea' )
