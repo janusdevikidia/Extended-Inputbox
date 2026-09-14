@@ -145,7 +145,10 @@
                 "extendedinputbox-formbuilder-error-noedit",
                 "extendedinputbox-formbuilder-error-noinsert",
                 "extendedinputbox-formbuilder-confirm-overwrite",
-                "extendedinputbox-formbuilder-summary-default"
+                "extendedinputbox-formbuilder-summary-default",
+                "extendedinputbox-formbuilder-notice-copied",
+                "extendedinputbox-formbuilder-btn-copy",
+                "extendedinputbox-formbuilder-status-loading"
             ]
         }
     },
