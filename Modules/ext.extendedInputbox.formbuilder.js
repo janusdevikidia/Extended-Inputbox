@@ -875,7 +875,7 @@
 
 		var insertBtn = new OO.ui.ButtonWidget( {
 			label: mw.msg( 'extendedinputbox-formbuilder-btn-insert' ),
-			icon: 'insert',
+			icon: 'add',
 			flags: [ 'progressive' ]
 		} ).on( 'click', insertHere );
 
