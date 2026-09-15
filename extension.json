@@ -1,6 +1,6 @@
 {
     "name": "Extended-Inputbox",
-    "version": "2.5.0",
+    "version": "3.0.0",
     "author": "Célian & Janus",
     "type": "other",
     "manifest_version": 2,
@@ -144,12 +144,21 @@
                 "extendedinputbox-formbuilder-error-preview",
                 "extendedinputbox-formbuilder-error-publish",
                 "extendedinputbox-formbuilder-error-noedit",
+                "extendedinputbox-formbuilder-error-noedit-detailed",
+                "extendedinputbox-formbuilder-error-editconflict",
                 "extendedinputbox-formbuilder-error-noinsert",
                 "extendedinputbox-formbuilder-confirm-overwrite",
                 "extendedinputbox-formbuilder-summary-default",
                 "extendedinputbox-formbuilder-notice-copied",
                 "extendedinputbox-formbuilder-btn-copy",
-                "extendedinputbox-formbuilder-status-loading"
+                "extendedinputbox-formbuilder-error-copy-failed",
+                "extendedinputbox-formbuilder-status-loading",
+                "extendedinputbox-formbuilder-status-previewing",
+                "extendedinputbox-formbuilder-status-publishing",
+                "extendedinputbox-formbuilder-warning-incomplete-field",
+                "extendedinputbox-error-duplicate-field",
+                "extendedinputbox-error-invalid-bgcolor",
+                "extendedinputbox-error-invalid-bordercolor"
             ]
         }
     },
