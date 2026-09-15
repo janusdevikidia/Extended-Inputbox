@@ -90,5 +90,8 @@
 	"extendedinputbox-formbuilder-status-publishing": "Transient status text shown next to the \"Load page\" button while the target page is being saved.",
 	"extendedinputbox-formbuilder-error-noinsert": "Error shown when trying to insert, preview or publish before a target page has been loaded.",
 	"extendedinputbox-formbuilder-confirm-overwrite": "Confirmation dialog shown before publishing changes to an already-existing page.",
-	"extendedinputbox-formbuilder-summary-default": "Default edit summary used when publishing from Special:FormBuilder without a custom \"summary=\" value."
+	"extendedinputbox-formbuilder-summary-default": "Default edit summary used when publishing from Special:FormBuilder without a custom \"summary=\" value.",
+	"extendedinputbox-formbuilder-advanced-toggle": "Label of the collapsible <details> section grouping the less commonly used general settings (required marker, button colors, skip-edit).",
+	"extendedinputbox-formbuilder-btn-previewpopup": "Label of the button that opens a read-only preview dialog reproducing the popup as currently configured, without publishing anything.",
+	"extendedinputbox-formbuilder-preview-popup-banner": "Banner shown at the top of the popup preview dialog, clarifying that it is non-functional (no save/publish happens from it)."
 }

@@ -122,9 +122,17 @@
 	 *
 	 * @return {string[]}
 	 */
+	/**
+	 * @return {{warnings: string[], invalidFieldIds: Object.<string,boolean>}}
+	 *   `invalidFieldIds` permet de surligner directement la ligne fautive
+	 *   (voir applyFieldRowHighlighting) plutôt que de forcer l'auteur à
+	 *   retrouver de mémoire, dans la liste des champs, à quelle ligne
+	 *   correspond chaque avertissement du bloc texte.
+	 */
 	function getValidationWarnings() {
 		var warnings = [];
-		var seenNames = {};
+		var seenNames = {}; // nom de champ -> id de la première ligne l'utilisant
+		var invalidFieldIds = {};
 
 		state.fields.forEach( function ( field, idx ) {
 			if ( !field.name || !field.label ) {
@@ -132,12 +140,18 @@
 				// avertissement, l'auteur pourrait croire à tort qu'il fait partie
 				// du wikitexte généré.
 				warnings.push( mw.msg( 'extendedinputbox-formbuilder-warning-incomplete-field', idx + 1 ) );
+				invalidFieldIds[ field.id ] = true;
 				return;
 			}
 			if ( Object.prototype.hasOwnProperty.call( seenNames, field.name ) ) {
 				warnings.push( mw.msg( 'extendedinputbox-error-duplicate-field', field.name ) );
+				// Les deux lignes en conflit sont surlignées, pas seulement la
+				// seconde : rien ne dit laquelle des deux l'auteur doit renommer.
+				invalidFieldIds[ field.id ] = true;
+				invalidFieldIds[ seenNames[ field.name ] ] = true;
+			} else {
+				seenNames[ field.name ] = field.id;
 			}
-			seenNames[ field.name ] = true;
 		} );
 
 		if ( state.general.bgColor && !isValidCssColor( state.general.bgColor ) ) {
@@ -147,7 +161,7 @@
 			warnings.push( mw.msg( 'extendedinputbox-error-invalid-bordercolor' ) );
 		}
 
-		return warnings;
+		return { warnings: warnings, invalidFieldIds: invalidFieldIds };
 	}
 
 	// ---------------------------------------------------------------------
@@ -225,6 +239,9 @@
 	var FIELD_TYPES = [ 'text', 'textarea', 'select', 'radio', 'checkbox' ];
 	var $generatedTextarea;
 	var $validationBox;
+	// id de champ -> $row correspondante, reconstruite à chaque rendu de la
+	// liste (renderFieldsList) : voir applyFieldRowHighlighting.
+	var fieldRows = {};
 
 	function refreshGeneratedWikitext() {
 		if ( $generatedTextarea ) {
@@ -233,18 +250,33 @@
 		refreshValidationBox();
 	}
 
+	/**
+	 * Surligne directement la/les lignes de champ fautives (nom/libellé
+	 * manquant, nom dupliqué) au lieu de laisser l'auteur chercher, dans le
+	 * bloc de texte sous le wikitexte généré, à laquelle des lignes du
+	 * panneau "Champs de la popup" un avertissement donné correspond.
+	 *
+	 * @param {Object.<string,boolean>} invalidFieldIds
+	 */
+	function applyFieldRowHighlighting( invalidFieldIds ) {
+		Object.keys( fieldRows ).forEach( function ( id ) {
+			fieldRows[ id ].toggleClass( 'eib-fb-field-row-invalid', !!invalidFieldIds[ id ] );
+		} );
+	}
+
 	function refreshValidationBox() {
 		if ( !$validationBox ) {
 			return;
 		}
-		var warnings = getValidationWarnings();
-		$validationBox.empty().toggleClass( 'eib-fb-validation-hidden', !warnings.length );
-		warnings.forEach( function ( msg ) {
+		var result = getValidationWarnings();
+		$validationBox.empty().toggleClass( 'eib-fb-validation-hidden', !result.warnings.length );
+		result.warnings.forEach( function ( msg ) {
 			$validationBox.append( $( '<div>' ).addClass( 'eib-fb-validation-item' ).text( msg ) );
 		} );
+		applyFieldRowHighlighting( result.invalidFieldIds );
 	}
 
-	function buildGeneralPanel() {
+	function buildGeneralPanel( skipHeading ) {
 		var g = state.general;
 
 		var typeDropdown = new OO.ui.DropdownInputWidget( {
@@ -292,6 +324,8 @@
 			refreshGeneratedWikitext();
 		} );
 
+		// Champs utilisés dans la quasi-totalité des formulaires : toujours
+		// visibles, sans avoir à ouvrir quoi que ce soit.
 		var $grid = $( '<div>' ).addClass( 'eib-fb-general-grid' );
 		[
 			new OO.ui.FieldLayout( typeDropdown, { label: mw.msg( 'extendedinputbox-formbuilder-field-type' ), align: 'top' } ),
@@ -303,14 +337,26 @@
 			textField( 'preloadParams', 'extendedinputbox-formbuilder-field-preloadparams' ),
 			textField( 'summary', 'extendedinputbox-formbuilder-field-summary' ),
 			textField( 'popupTitle', 'extendedinputbox-formbuilder-field-popuptitle' ),
-			textField( 'popupText', 'extendedinputbox-formbuilder-field-popuptext', true ),
-			textField( 'bgColor', 'extendedinputbox-formbuilder-field-bgcolor' ),
-			textField( 'borderColor', 'extendedinputbox-formbuilder-field-bordercolor' )
+			textField( 'popupText', 'extendedinputbox-formbuilder-field-popuptext', true )
 		].forEach( function ( layout ) {
 			$grid.append( layout.$element );
 		} );
 
-		$grid.append(
+		// Réglages nettement moins fréquents (couleurs de bouton, publication
+		// directe, marqueur "requis" personnalisé) : repliés par défaut dans
+		// un <details> natif, pour ne plus les afficher tous en permanence au
+		// milieu des champs réellement utilisés à chaque formulaire. <details>
+		// est préféré à un widget OOUI dédié : aucune dépendance supplémentaire,
+		// comportement accessible natif (clavier, lecteurs d'écran).
+		var $advancedGrid = $( '<div>' ).addClass( 'eib-fb-general-grid' );
+		[
+			textField( 'bgColor', 'extendedinputbox-formbuilder-field-bgcolor' ),
+			textField( 'borderColor', 'extendedinputbox-formbuilder-field-bordercolor' )
+		].forEach( function ( layout ) {
+			$advancedGrid.append( layout.$element );
+		} );
+
+		$advancedGrid.append(
 			new OO.ui.FieldLayout( skipEditCheckbox, {
 				label: mw.msg( 'extendedinputbox-formbuilder-field-skipedit' ),
 				align: 'inline'
@@ -324,12 +370,18 @@
 			} ).$element,
 			$( '<label>' ).append( hideMarkerCheckbox.$element, ' ' + mw.msg( 'extendedinputbox-formbuilder-field-hidemarker' ) )
 		);
-		$grid.append( $markerRow );
+		$advancedGrid.append( $markerRow );
 
-		return $( '<div>' ).append(
-			$( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-section-general' ) ),
-			$grid
+		var $advancedDetails = $( '<details>' ).addClass( 'eib-fb-advanced' ).append(
+			$( '<summary>' ).text( mw.msg( 'extendedinputbox-formbuilder-advanced-toggle' ) ),
+			$advancedGrid
 		);
+
+		var $panel = $( '<div>' );
+		if ( !skipHeading ) {
+			$panel.append( $( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-section-general' ) ) );
+		}
+		return $panel.append( $grid, $advancedDetails );
 	}
 
 	function buildFieldRow( field, $list ) {
@@ -388,6 +440,8 @@
 		);
 
 		bindDragEvents( $row, $list );
+
+		fieldRows[ field.id ] = $row;
 
 		return $row;
 	}
@@ -451,6 +505,9 @@
 
 	function renderFieldsList( $list ) {
 		$list.empty();
+		// Les $row précédentes sont détruites par ce empty() : la map doit
+		// repartir de zéro pour ne jamais garder de référence DOM périmée.
+		fieldRows = {};
 		if ( !state.fields.length ) {
 			$list.append( $( '<div>' ).addClass( 'eib-fb-empty-fields' ).text( mw.msg( 'extendedinputbox-formbuilder-no-fields' ) ) );
 		}
@@ -460,7 +517,7 @@
 		refreshGeneratedWikitext();
 	}
 
-	function buildFieldsPanel() {
+	function buildFieldsPanel( skipHeading ) {
 		var $list = $( '<div>' ).addClass( 'eib-fb-fields-list' );
 
 		var addBtn = new OO.ui.ButtonWidget( {
@@ -482,11 +539,11 @@
 
 		renderFieldsList( $list );
 
-		return $( '<div>' ).append(
-			$( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-section-fields' ) ),
-			$list,
-			addBtn.$element
-		);
+		var $panel = $( '<div>' );
+		if ( !skipHeading ) {
+			$panel.append( $( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-section-fields' ) ) );
+		}
+		return $panel.append( $list, addBtn.$element );
 	}
 
 	/**
@@ -557,14 +614,200 @@
 			}, 4000 );
 		} );
 
+		// Contrairement à "Prévisualiser" (panneau "Page cible"), qui rend la
+		// PAGE cible via l'API et nécessite d'avoir chargé un titre, ce
+		// bouton montre à quoi ressemble la POPUP elle-même (titre, texte,
+		// champs, show-if), à partir du seul état en cours de construction :
+		// utile dès la construction du formulaire, avant même de choisir une
+		// page cible.
+		var previewPopupBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-formbuilder-btn-previewpopup' ),
+			icon: 'eye'
+		} ).on( 'click', previewPopup );
+
 		refreshGeneratedWikitext();
 
 		return $( '<div>' ).append(
 			$( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-generated-label' ) ),
 			$generatedTextarea,
 			$validationBox,
-			$( '<div>' ).addClass( 'eib-fb-toolbar' ).append( copyBtn.$element, $copyStatus )
+			$( '<div>' ).addClass( 'eib-fb-toolbar' ).append( copyBtn.$element, previewPopupBtn.$element, $copyStatus )
 		);
+	}
+
+	// ---------------------------------------------------------------------
+	// Aperçu de la popup (indépendant de la page cible, voir previewPopupBtn)
+	// ---------------------------------------------------------------------
+
+	// WindowManager séparé de celui de ext.extendedInputbox.popup.js (module
+	// distinct, pas forcément chargé sur Special:FormBuilder) : ce dialogue
+	// d'aperçu est entièrement autonome et ne réutilise volontairement aucune
+	// logique de publication réelle (skip-edit, appel API, redirection...),
+	// afin qu'un clic sur son bouton d'action ne puisse jamais avoir d'effet
+	// de bord. Voir openPreviewDialog ci-dessous : sa seule action est
+	// "Fermer".
+	var previewWindowManager = null;
+	function getPreviewWindowManager() {
+		if ( !previewWindowManager ) {
+			previewWindowManager = new OO.ui.WindowManager();
+			$( 'body' ).append( previewWindowManager.$element );
+		}
+		return previewWindowManager;
+	}
+
+	/**
+	 * Construit, à partir de l'état courant du constructeur, un objet config
+	 * minimal dans le même format que celui consommé par
+	 * ext.extendedInputbox.popup.js (title/text/fields/requiredMarker), sans
+	 * passer par le wikitexte généré ni par une quelconque page réelle.
+	 */
+	function buildPreviewConfigFromState() {
+		return {
+			title: state.general.popupTitle || null,
+			text: state.general.popupText || null,
+			// Miroir de generateWikitext() : un champ sans nom/libellé est
+			// silencieusement absent du wikitexte, donc absent de l'aperçu.
+			fields: state.fields.filter( function ( f ) { return f.name && f.label; } ),
+			requiredMarker: state.general.requiredMarker
+		};
+	}
+
+	/**
+	 * Rendu des champs et de la logique show-if : miroir volontairement
+	 * restreint de openExtendedDialog() dans ext.extendedInputbox.popup.js
+	 * (même grammaire show-if, mêmes types de widgets), MAIS sans aucune des
+	 * parties liées à la publication réelle (preload, magic words, appel
+	 * api.postWithToken, redirection...), qui n'ont pas de sens hors d'une
+	 * vraie page cible et ne doivent surtout pas s'exécuter par erreur depuis
+	 * un simple aperçu.
+	 */
+	function openPreviewDialog( config ) {
+		function PreviewDialog( cfg ) {
+			PreviewDialog.super.call( this, cfg );
+		}
+		OO.inheritClass( PreviewDialog, OO.ui.Dialog );
+		PreviewDialog.static.name = 'eibFormBuilderPreviewDialog';
+		PreviewDialog.static.title = config.title || mw.msg( 'extendedinputbox-default-title' );
+		PreviewDialog.static.actions = [
+			{ label: mw.msg( 'extendedinputbox-btn-cancel' ), flags: 'safe' }
+		];
+
+		PreviewDialog.prototype.initialize = function () {
+			PreviewDialog.super.prototype.initialize.apply( this, arguments );
+			var widgets = {};
+			var fieldLayouts = {};
+			this.content = new OO.ui.PanelLayout( { padded: true, expanded: false } );
+
+			this.content.$element.append(
+				$( '<p>' ).addClass( 'eib-fb-preview-banner' )
+					.text( mw.msg( 'extendedinputbox-formbuilder-preview-popup-banner' ) )
+			);
+
+			if ( config.text ) {
+				this.content.$element.append( $( '<p>' ).text( config.text ) );
+			}
+
+			config.fields.forEach( function ( field ) {
+				var opts;
+				var widget;
+				if ( field.type === 'select' ) {
+					opts = ( field.options || '' ).split( ',' ).map( function ( o ) {
+						var v = o.trim(); return { data: v, label: v };
+					} );
+					widget = new OO.ui.DropdownInputWidget( { options: opts } );
+				} else if ( field.type === 'radio' ) {
+					opts = ( field.options || '' ).split( ',' ).map( function ( o ) {
+						var v = o.trim(); return { data: v, label: v };
+					} );
+					widget = new OO.ui.RadioSelectInputWidget( { options: opts } );
+				} else if ( field.type === 'checkbox' || field.type === 'checkboxes' ) {
+					opts = field.options ? field.options.split( ',' ).map( function ( o ) {
+						var v = o.trim(); return { data: v, label: v };
+					} ) : [];
+					widget = new OO.ui.CheckboxMultiselectInputWidget( { options: opts } );
+				} else if ( field.type === 'textarea' ) {
+					widget = new OO.ui.MultilineTextInputWidget( { value: field.options || '' } );
+				} else {
+					widget = new OO.ui.TextInputWidget( { value: field.options || '' } );
+				}
+
+				if ( field.required && typeof widget.setRequired === 'function' ) {
+					widget.setRequired( true );
+				}
+
+				var requiredMarker = ( config.requiredMarker === null || config.requiredMarker === undefined ) ?
+					mw.msg( 'extendedinputbox-required-marker' ) : config.requiredMarker;
+				var layout = new OO.ui.FieldLayout( widget, {
+					label: field.required && requiredMarker ? field.label + ' ' + requiredMarker : field.label,
+					align: 'top'
+				} );
+
+				widgets[ field.name ] = widget;
+				fieldLayouts[ field.name ] = layout;
+				this.content.$element.append( layout.$element );
+			}, this );
+
+			function checkSingleCondition( condStr ) {
+				var eqIdx = condStr.indexOf( '=' );
+				if ( eqIdx === -1 ) { return false; }
+				var parentName = condStr.substring( 0, eqIdx ).trim();
+				var targetVal = condStr.substring( eqIdx + 1 ).trim();
+				var parentLayout = fieldLayouts[ parentName ];
+				var parentWidget = widgets[ parentName ];
+				if ( !parentLayout || !parentLayout.isVisible() || !parentWidget ) { return false; }
+				var parentVal = parentWidget.getValue();
+				return Array.isArray( parentVal ) ? parentVal.indexOf( targetVal ) !== -1 : parentVal === targetVal;
+			}
+			function evaluateShowIf( rawCond ) {
+				return rawCond.split( ',' ).some( function ( branch ) {
+					return branch.split( '&' ).every( function ( cond ) {
+						return checkSingleCondition( cond.trim() );
+					} );
+				} );
+			}
+			function updateAllVisibilities() {
+				var changed = true;
+				var maxPasses = 10;
+				while ( changed && maxPasses > 0 ) {
+					changed = false;
+					maxPasses--;
+					config.fields.forEach( function ( field ) {
+						if ( !field.showIf ) { return; }
+						var showIfStr = field.showIf.trim();
+						if ( showIfStr.indexOf( 'show-if:' ) !== 0 ) { return; }
+						var rawCond = showIfStr.substring( 8 ).trim();
+						var shouldShow = evaluateShowIf( rawCond );
+						var currentLayout = fieldLayouts[ field.name ];
+						if ( currentLayout && currentLayout.isVisible() !== shouldShow ) {
+							currentLayout.toggle( shouldShow );
+							changed = true;
+						}
+					} );
+				}
+			}
+			Object.keys( widgets ).forEach( function ( name ) {
+				widgets[ name ].on( 'change', updateAllVisibilities );
+			} );
+			updateAllVisibilities();
+
+			this.$body.append( this.content.$element );
+		};
+
+		PreviewDialog.prototype.getBodyHeight = function () {
+			return this.content.$element.outerHeight( true );
+		};
+
+		var windowManager = getPreviewWindowManager();
+		var dialog = new PreviewDialog( { size: 'medium' } );
+		windowManager.addWindows( [ dialog ] );
+		var openedWindow = windowManager.openWindow( dialog );
+		openedWindow.closed.then( function () {
+			windowManager.removeWindows( [ PreviewDialog.static.name ] );
+		} );
+	}
+
+	function previewPopup() {
+		openPreviewDialog( buildPreviewConfigFromState() );
 	}
 
 	// ---------------------------------------------------------------------
@@ -576,13 +819,28 @@
 	var $previewBox;
 	var $statusSpan;
 
-	function showNotice( message, isError ) {
+	/**
+	 * @param {string} message
+	 * @param {string|boolean} [level] 'error' | 'success' | 'notice'.
+	 *   Conservé compatible avec les appels historiques qui passaient un
+	 *   booléen : true => 'error', false/undefined => 'success'. Le niveau
+	 *   'notice' (bleu, icône info) sert aux messages qui ne signalent ni un
+	 *   échec ni une réussite, mais une simple indication à suivre (« charge
+	 *   d'abord une page cible »), pour ne pas les confondre visuellement
+	 *   avec un vrai refus de droits ou une vraie erreur d'API.
+	 */
+	function showNotice( message, level ) {
 		if ( !$noticeArea ) {
 			return;
 		}
+		if ( level === true ) {
+			level = 'error';
+		} else if ( level === false || level === undefined ) {
+			level = 'success';
+		}
 		$noticeArea.empty();
 		var widget = new OO.ui.MessageWidget( {
-			type: isError ? 'error' : 'success',
+			type: level,
 			label: message
 		} );
 		$noticeArea.append( widget.$element );
@@ -666,7 +924,7 @@
 
 			if ( page.missing ) {
 				$targetTextarea.val( '' );
-				showNotice( mw.msg( 'extendedinputbox-formbuilder-notice-newpage' ), false );
+				showNotice( mw.msg( 'extendedinputbox-formbuilder-notice-newpage' ), 'notice' );
 			} else {
 				var content = page.revisions && page.revisions[ 0 ] && page.revisions[ 0 ].slots &&
 					page.revisions[ 0 ].slots.main ? page.revisions[ 0 ].slots.main.content : '';
@@ -702,7 +960,7 @@
 
 	function insertHere() {
 		if ( target.title === null ) {
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noinsert' ), true );
+			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noinsert' ), 'notice' );
 			return;
 		}
 
@@ -732,7 +990,7 @@
 
 	function previewHere() {
 		if ( target.title === null ) {
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noinsert' ), true );
+			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noinsert' ), 'notice' );
 			return;
 		}
 
@@ -821,7 +1079,7 @@
 
 	function publishPage() {
 		if ( target.title === null ) {
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noinsert' ), true );
+			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noinsert' ), 'notice' );
 			return;
 		}
 		if ( target.canEdit === false ) {
@@ -918,9 +1176,31 @@
 
 		var $intro = $( '<p>' ).text( mw.msg( 'extendedinputbox-formbuilder-intro' ) );
 
+		// "Paramètres généraux" et "Champs de la popup" étaient auparavant
+		// deux panneaux empilés en permanence, en plus du wikitexte généré et
+		// de la page cible : jusqu'à 4 blocs visibles à la fois. Les regrouper
+		// en deux onglets réduit ce qui est affiché d'un coup, sans retirer de
+		// fonctionnalité (le wikitexte généré reste toujours visible sous les
+		// onglets, puisque c'est lui qui matérialise ce que fait chaque
+		// réglage, quel que soit l'onglet actif).
+		var generalTabPanel = new OO.ui.TabPanelLayout( 'general', {
+			label: mw.msg( 'extendedinputbox-formbuilder-section-general' ),
+			expanded: false
+		} );
+		generalTabPanel.$element.addClass( 'eib-fb-tabpanel' ).append( buildGeneralPanel( true ) );
+
+		var fieldsTabPanel = new OO.ui.TabPanelLayout( 'fields', {
+			label: mw.msg( 'extendedinputbox-formbuilder-section-fields' ),
+			expanded: false
+		} );
+		fieldsTabPanel.$element.addClass( 'eib-fb-tabpanel' ).append( buildFieldsPanel( true ) );
+
+		var indexLayout = new OO.ui.IndexLayout( { expanded: false, framed: true } );
+		indexLayout.addTabPanels( [ generalTabPanel, fieldsTabPanel ] );
+		indexLayout.setTabPanel( 'general' );
+
 		var $left = $( '<div>' ).addClass( 'eib-fb-column' ).append(
-			$( '<div>' ).addClass( 'eib-fb-panel' ).append( buildGeneralPanel() ),
-			$( '<div>' ).addClass( 'eib-fb-panel' ).append( buildFieldsPanel() ),
+			$( '<div>' ).addClass( 'eib-fb-panel eib-fb-tabs-panel' ).append( indexLayout.$element ),
 			$( '<div>' ).addClass( 'eib-fb-panel' ).append( buildPreviewPanel() )
 		);
 

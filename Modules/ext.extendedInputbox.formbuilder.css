@@ -28,6 +28,26 @@
 	padding-bottom: 0.4em;
 }
 
+/* Bloc <details> natif regroupant les réglages avancés (couleurs de bouton,
+ * skip-edit, marqueur "requis") pour ne plus les afficher tous en
+ * permanence au milieu des champs utilisés à chaque formulaire. */
+.eib-fb-advanced {
+	margin-top: 0.8em;
+	border-top: 1px solid #eaecf0;
+	padding-top: 0.6em;
+}
+
+.eib-fb-advanced > summary {
+	cursor: pointer;
+	font-weight: 600;
+	color: #202122;
+	padding: 0.2em 0;
+}
+
+.eib-fb-advanced[open] > summary {
+	margin-bottom: 0.4em;
+}
+
 .eib-fb-field-row {
 	display: flex;
 	flex-wrap: wrap;
@@ -48,6 +68,15 @@
 .eib-fb-field-row.eib-fb-dragover {
 	border-color: #36c;
 	border-style: dashed;
+}
+
+/* Surlignage direct de la ligne fautive (nom/libellé manquant, nom
+ * dupliqué), en complément du bloc de warnings sous le wikitexte généré :
+ * même palette orangée que .eib-fb-validation (avertissement préventif,
+ * pas une erreur bloquante). */
+.eib-fb-field-row.eib-fb-field-row-invalid {
+	border-color: #ffa50e;
+	background: #fef6e7;
 }
 
 .eib-fb-field-row .eib-fb-drag-handle {
@@ -72,6 +101,17 @@
 .eib-fb-field-actions {
 	display: flex;
 	gap: 0.2em;
+}
+
+/* Panneau contenant l'IndexLayout (onglets "Général"/"Champs") : padding
+ * réduit par rapport à .eib-fb-panel classique, l'IndexLayout gérant déjà
+ * sa propre marge interne autour du contenu de chaque onglet. */
+.eib-fb-tabs-panel {
+	padding: 0;
+}
+
+.eib-fb-tabpanel {
+	padding: 1em 1.2em 1.2em;
 }
 
 .eib-fb-empty-fields {
@@ -126,6 +166,16 @@
 
 .eib-fb-status.eib-fb-status-error {
 	color: #d33;
+}
+
+/* Bannière en tête du dialogue d'aperçu de la popup (openPreviewDialog) :
+ * rappelle qu'il s'agit d'un aperçu non fonctionnel, pas la vraie popup. */
+.eib-fb-preview-banner {
+	font-style: italic;
+	color: #54595d;
+	border-bottom: 1px solid #eaecf0;
+	padding-bottom: 0.6em;
+	margin-bottom: 0.8em;
 }
 
 /* Avertissements de validation "live" (couleur invalide, champ incomplet,

@@ -158,7 +158,13 @@
                 "extendedinputbox-formbuilder-warning-incomplete-field",
                 "extendedinputbox-error-duplicate-field",
                 "extendedinputbox-error-invalid-bgcolor",
-                "extendedinputbox-error-invalid-bordercolor"
+                "extendedinputbox-error-invalid-bordercolor",
+                "extendedinputbox-formbuilder-advanced-toggle",
+                "extendedinputbox-formbuilder-btn-previewpopup",
+                "extendedinputbox-formbuilder-preview-popup-banner",
+                "extendedinputbox-default-title",
+                "extendedinputbox-btn-cancel",
+                "extendedinputbox-required-marker"
             ]
         }
     },
