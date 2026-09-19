@@ -14,6 +14,73 @@
 	function getApi() {
 		return api || ( api = new mw.Api() );
 	}
+
+	/**
+	 * Cherche la description d'un filtre AbuseFilter dans une entrée d'erreur.
+	 * C'est le NOM/résumé configuré pour le filtre (visible dans Spécial:
+	 * AbuseFilter), pas le contenu de sa page de message personnalisée
+	 * (ex. MediaWiki:Abusefilter-disallowed-1) : on ne l'utilise donc qu'en
+	 * dernier recours, quand cette page de message est absente/vide.
+	 *
+	 * @param {Object} e Une entrée de data.errors[] (ou data.error en bc)
+	 * @return {string} Chaîne vide si rien d'exploitable.
+	 */
+	function abuseFilterDescription( e ) {
+		var af = e && ( ( e.data && e.data.abusefilter ) || e.abusefilter );
+		return ( af && af.description ) || '';
+	}
+
+	/**
+	 * Convertit un tableau d'erreurs au format `errorformat=html` de l'API
+	 * MediaWiki (ex. avertissements AbuseFilter) en un unique fragment HTML.
+	 * Priorité au VRAI contenu de la page de message du filtre
+	 * (`e.html`, ex. la <div> de MediaWiki:Abusefilter-disallowed-1), qui peut
+	 * contenir de la mise en forme ; la description du filtre (nom générique)
+	 * n'est utilisée qu'en dernier recours pour cette entrée.
+	 *
+	 * @param {Array|undefined} errArray
+	 * @return {string} Chaîne vide (HTML) si rien d'exploitable.
+	 */
+	function errorsToHtml( errArray ) {
+		if ( !Array.isArray( errArray ) || !errArray.length ) {
+			return '';
+		}
+		return errArray.map( function ( e ) {
+			return ( e && ( e.html || e.text ) ) || abuseFilterDescription( e ) || '';
+		} ).filter( Boolean ).join( ' ' );
+	}
+
+	/**
+	 * Extrait un message d'erreur (HTML) lisible d'un échec mw.Api, dans cet
+	 * ordre :
+	 * 1) le contenu réel de `errorformat=html` (data.errors[].html), qui est
+	 *    le texte/HTML effectivement configuré pour ce filtre ;
+	 * 2) l'objet d'erreur "bc" classique (avec sa propre description
+	 *    AbuseFilter éventuelle) ;
+	 * 3) en dernier recours, le code brut (ex. "abusefilter-disallowed-noip"),
+	 *    signe qu'aucune page de message ni description de filtre n'a pu être
+	 *    récupérée — il faut alors vérifier côté wiki que la page
+	 *    MediaWiki:Abusefilter-disallowed-noip existe et contient le texte voulu.
+	 *
+	 * @return {string} HTML (potentiellement juste du texte simple) à insérer
+	 *  tel quel — ne PAS re-échapper avant affichage.
+	 */
+	function extractApiError( code, data ) {
+		var fromErrors = data && errorsToHtml( data.errors );
+		if ( fromErrors ) {
+			return fromErrors;
+		}
+		if ( data && data.error ) {
+			if ( data.error.html || data.error.info ) {
+				return data.error.html || data.error.info;
+			}
+			var fromDescription = abuseFilterDescription( data.error );
+			if ( fromDescription ) {
+				return fromDescription;
+			}
+		}
+		return mw.html.escape( code || 'unknown-error' );
+	}
 	var configs = mw.config.get( 'extendedInputboxConfigs' ) || {};
 
 	// Décalage (en minutes) entre le fuseau horaire configuré côté serveur
@@ -512,7 +579,20 @@
 							var editData = {
 								action: 'edit',
 								title: targetPage,
-								text: wikitext
+								text: wikitext,
+								// errorformat=plaintext : demande à l'API de renvoyer, pour
+								// chaque erreur/avertissement (y compris ceux d'AbuseFilter),
+								// un texte déjà localisé et lisible dans data.errors[].text
+								// plutôt que le seul code brut (ex. "abusefilter-disallowed-noip").
+								// errorformat=html : demande à l'API le VRAI contenu de la page
+								// de message du filtre (ex. MediaWiki:Abusefilter-disallowed-1),
+								// avec sa mise en forme (une <div>, des liens, etc.) au lieu du
+								// texte brut dépouillé. Voir errorsToHtml()/extractApiError().
+								// formatversion=2 assure une structure JSON stable pour
+								// data.errors[].data.abusefilter (description du filtre, utilisée
+								// seulement en dernier recours si la page de message est absente).
+								errorformat: 'html',
+								formatversion: 2
 							};
 
 							if ( config.rawParams.type === 'commenttitle' || config.rawParams.type === 'comment' ) {
@@ -530,8 +610,24 @@
 								dialog.close();
 								window.location.href = mw.util.getUrl( targetPage );
 							}, function ( code, data ) {
-								var errorMsg = ( data && data.error && data.error.info ) ? data.error.info : code;
-								return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-publish', errorMsg ) ) );
+								// DEBUG TEMPORAIRE — à retirer une fois le problème résolu :
+								// affiche la réponse brute de l'API dans la console du
+								// navigateur (F12 > Console) pour voir exactement ce que le
+								// serveur renvoie (data.errors, data.error, etc.).
+								// eslint-disable-next-line no-console
+								console.log( 'ExtendedInputBox debug — code:', code, 'data:', data );
+								// extractApiError() renvoie du HTML (contenu réel de la page
+								// de message du filtre, ex. sa <div>) : on l'insère tel quel,
+								// sans le ré-échapper. mw.message( key ).plain() donne le texte
+								// BRUT du message ("Erreur lors de la publication : $1", sans
+								// aucun parsing ni substitution) : on remplace nous-mêmes "$1"
+								// pour garder le HTML intact, puis on passe un élément jQuery à
+								// OO.ui.Error (accepté en plus du texte brut), qui affiche donc
+								// la mise en forme d'origine au lieu de l'échapper.
+								var errorHtml = extractApiError( code, data );
+								var template = mw.message( 'extendedinputbox-error-publish' ).plain();
+								var combined = template.replace( '$1', errorHtml );
+								return $.Deferred().reject( new OO.ui.Error( $( '<div>' ).html( combined ) ) );
 							} );
 						}, function () {
 							// Échec de récupération du preload : on bloque la publication
@@ -592,3 +688,4 @@
 
 } )( jQuery, mediaWiki );
 // </nowiki>
+
