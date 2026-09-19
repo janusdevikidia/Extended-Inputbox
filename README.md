@@ -5,7 +5,8 @@ Extension MediaWiki qui ajoute des formulaires en fenêtre modale aux balises
 plusieurs valeurs avant de créer ou modifier une page, de précharger un modèle
 et de personnaliser le bouton.
 
-Compatible avec MediaWiki **1.39+** et avec l'extension **InputBox**.
+Version actuelle : **3.0.0**. Compatible avec MediaWiki **1.39+** et avec
+l'extension **InputBox**.
 
 ## Prérequis
 
@@ -182,6 +183,25 @@ button-border-color=#1a3d7c
 Les formats usuels de couleur CSS sont acceptés (`#3366cc`, `rgb(...)`,
 `hsl(...)` et les noms CSS). Une couleur invalide laisse le formulaire
 utilisable et affiche une erreur sous celui-ci.
+
+## Nouveautés de la 3.0.0
+
+Cette version continue d'enrichir **Special:FormBuilder**, toujours sans
+changer le format `<inputbox>` (aucune migration nécessaire) :
+
+* **Aperçu de la popup.** Un bouton « Aperçu de la popup » ouvre un dialogue
+  qui reproduit fidèlement l'apparence de la popup telle que configurée
+  (titre, texte d'introduction, champs, conditions `show-if`, marqueur de
+  champ requis...), sans rien publier. Une bannière rappelle qu'il s'agit
+  d'un aperçu non fonctionnel.
+* **Options avancées repliées.** Les réglages moins utilisés (marqueur de
+  champ requis, couleurs de bouton, publication directe) sont désormais
+  regroupés dans un bloc repliable « Options avancées », pour ne plus
+  encombrer le formulaire principal.
+* **Repérage visuel des champs incomplets.** En plus de l'avertissement
+  textuel déjà affiché sous le wikitexte généré, la ligne du champ fautif
+  (nom manquant, libellé manquant ou nom dupliqué) est désormais surlignée
+  directement dans la liste des champs.
 
 ## Nouveautés de la 2.5.1
 
