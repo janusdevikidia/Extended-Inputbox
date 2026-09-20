@@ -93,5 +93,6 @@
 	"extendedinputbox-formbuilder-summary-default": "Form inserted via Special:FormBuilder",
 	"extendedinputbox-formbuilder-advanced-toggle": "Advanced options",
 	"extendedinputbox-formbuilder-btn-previewpopup": "Preview popup",
-	"extendedinputbox-formbuilder-preview-popup-banner": "Preview — this reproduces the popup's appearance as currently configured; nothing will be published from this window."
+	"extendedinputbox-formbuilder-preview-popup-banner": "Preview — this reproduces the popup's appearance as currently configured; nothing will be published from this window.",
+	"extendedinputbox-formbuilder-btn-closepreview": "Close preview"
 }
