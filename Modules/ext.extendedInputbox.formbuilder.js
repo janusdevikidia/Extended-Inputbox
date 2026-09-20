@@ -892,17 +892,16 @@
 		setStatus( mw.msg( 'extendedinputbox-formbuilder-status-loading' ) );
 		loadBtn.setDisabled( true );
 
-		// 1. Normalisation automatique du titre via l'outil natif MediaWiki
+		// Normalisation automatique de l'espace de noms (ex: User: -> Utilisateur:)
 		var titleObj = mw.Title.newFromText( title );
 		var targetTitle = titleObj ? titleObj.getPrefixedText() : title;
 
-		// 2. Utilisation de api.post() au lieu de api.get() pour garantir le passage des cookies de session
-		api.post( {
+		api.get( {
 			action: 'query',
 			prop: 'revisions|info',
 			rvprop: 'content|timestamp',
 			rvslots: 'main',
-			intestactions: 'edit',
+			intestactions: 'edit|create',
 			titles: targetTitle,
 			redirects: 1,
 			errorformat: 'plaintext',
@@ -920,7 +919,12 @@
 				page.revisions[ 0 ].timestamp : null;
 
 			var actions = page.actions || {};
-			target.canEdit = !actions.edit || actions.edit.length === 0;
+			// Avec formatversion=2, l'action vaut true si autorisée, ou un Array d'erreurs si refusée
+			if ( page.missing ) {
+				target.canEdit = actions.create === true;
+			} else {
+				target.canEdit = actions.edit === true;
+			}
 
 			if ( page.missing ) {
 				$targetTextarea.val( '' );
@@ -932,7 +936,8 @@
 			}
 
 			if ( !target.canEdit ) {
-				var detail = errorsToText( actions.edit );
+				var actionErr = page.missing ? actions.create : actions.edit;
+				var detail = Array.isArray( actionErr ) ? errorsToText( actionErr ) : '';
 				showNotice(
 					detail ?
 						mw.msg( 'extendedinputbox-formbuilder-error-noedit-detailed', detail ) :
