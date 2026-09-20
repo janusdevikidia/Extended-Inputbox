@@ -881,7 +881,7 @@
 		// insertHere()/previewHere()/publishPage().
 	}
 
-	function loadPage() {
+		function loadPage() {
 		var title = $.trim( targetTitleWidget.getValue() );
 		if ( !title ) {
 			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-notitle' ), true );
@@ -892,25 +892,25 @@
 		setStatus( mw.msg( 'extendedinputbox-formbuilder-status-loading' ) );
 		loadBtn.setDisabled( true );
 
-		// errorformat=plaintext : demande à l'API de fournir, pour chaque
-		// erreur (y compris le résultat détaillé de intestactions), un champ
-		// `.text` déjà traduit et prêt à afficher, plutôt qu'un simple code
-		// ("protectedpage", "blocked"...) que l'utilisateur ne peut pas
-		// interpréter. Voir extractApiError()/errorsToText().
-		api.get( {
+		// 1. Normalisation automatique du titre via l'outil natif MediaWiki
+		var titleObj = mw.Title.newFromText( title );
+		var targetTitle = titleObj ? titleObj.getPrefixedText() : title;
+
+		// 2. Utilisation de api.post() au lieu de api.get() pour garantir le passage des cookies de session
+		api.post( {
 			action: 'query',
 			prop: 'revisions|info',
 			rvprop: 'content|timestamp',
 			rvslots: 'main',
 			intestactions: 'edit',
-			titles: title,
+			titles: targetTitle,
 			redirects: 1,
 			errorformat: 'plaintext',
 			formatversion: 2
 		} ).done( function ( res ) {
 			var page = res && res.query && res.query.pages && res.query.pages[ 0 ];
 			if ( !page ) {
-				showNotice( mw.msg( 'extendedinputbox-formbuilder-error-load', title ), true );
+				showNotice( mw.msg( 'extendedinputbox-formbuilder-error-load', targetTitle ), true );
 				return;
 			}
 
@@ -932,12 +932,6 @@
 			}
 
 			if ( !target.canEdit ) {
-				// Auparavant : message générique unique, quelle que soit la
-				// cause réelle (protection, blocage, wiki en lecture seule,
-				// filtre anti-abus...). On exploite maintenant le détail
-				// renvoyé par intestactions ; le message générique ne sert
-				// plus que de filet de sécurité si l'API ne renvoie aucun
-				// texte exploitable.
 				var detail = errorsToText( actions.edit );
 				showNotice(
 					detail ?
