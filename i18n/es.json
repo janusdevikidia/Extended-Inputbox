@@ -13,7 +13,7 @@
 	"extendedinputbox-error-unresolved-title": "El título de página generado contiene llaves sin resolver: $1. Comprueba el parámetro «page=» de la configuración de <inputbox>.",
 	"extendedinputbox-error-preload-fetch": "No se pudo obtener la plantilla de precarga «$1». La página no se ha publicado. Comprueba que la plantilla existe e inténtalo de nuevo.",
 	"extendedinputbox-error-publish": "Error al publicar: $1",
-	"extendedinputbox-error-popup-preload-deprecated": "Error: el parámetro «popup-preload» ya no es compatible. Utiliza únicamente «preload».",
+	"extendedinputbox-error-popup-preload-deprecated": "Error: el parámetro «popup-preload» ya no está soportado. Utiliza únicamente «preload».",
 	"extendedinputbox-error-invalid-bgcolor": "Error: el valor de «button-bgcolor» no es un color CSS válido.",
 	"extendedinputbox-error-invalid-bordercolor": "Error: el valor de «button-border-color» no es un color CSS válido.",
 	"extendedinputbox-error-duplicate-field": "Error: el nombre de campo «$1» se utiliza varias veces en este formulario.",
