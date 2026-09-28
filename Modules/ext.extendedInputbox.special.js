@@ -97,8 +97,12 @@
 		var invalidFieldIds = {};
 
 		state.fields.forEach( function ( field, idx ) {
+			if ( [ field.name, field.label, field.options, field.showIf ].some( function ( v ) { return ( v || '' ).indexOf( '|' ) !== -1; } ) ) {
+				warnings.push( mw.msg( 'extendedinputbox-special-warning-pipe-in-field', idx + 1 ) );
+				invalidFieldIds[ field.id ] = true;
+			}
 			if ( !field.name || !field.label ) {
-				warnings.push( mw.msg( 'extendedinputbox-formbuilder-warning-incomplete-field', idx + 1 ) );
+				warnings.push( mw.msg( 'extendedinputbox-special-warning-incomplete-field', idx + 1 ) );
 				invalidFieldIds[ field.id ] = true;
 				return;
 			}
@@ -195,14 +199,14 @@
 	var fieldRows = {};
 
 	function refreshGeneratedWikitext() {
-		if ( $generatedTextarea ) {$generatedTextarea.val( generateWikitext() );
+		if ( $generatedTextarea ) { $generatedTextarea.val( generateWikitext() );
 		}
 		refreshValidationBox();
 	}
 
 	function applyFieldRowHighlighting( invalidFieldIds ) {
 		Object.keys( fieldRows ).forEach( function ( id ) {
-			fieldRows[ id ].toggleClass( 'eib-fb-field-row-invalid', !!invalidFieldIds[ id ] );
+			fieldRows[ id ].toggleClass( 'eib-sp-field-row-invalid', !!invalidFieldIds[ id ] );
 		} );
 	}
 
@@ -211,9 +215,9 @@
 			return;
 		}
 		var result = getValidationWarnings();
-		$validationBox.empty().toggleClass( 'eib-fb-validation-hidden', !result.warnings.length );
+		$validationBox.empty().toggleClass( 'eib-sp-validation-hidden', !result.warnings.length );
 		result.warnings.forEach( function ( msg ) {
-			$validationBox.append($( '<div>' ).addClass( 'eib-fb-validation-item' ).text( msg ) );
+			$validationBox.append( $( '<div>' ).addClass( 'eib-sp-validation-item' ).text( msg ) );
 		} );
 		applyFieldRowHighlighting( result.invalidFieldIds );
 	}
@@ -223,11 +227,11 @@
 
 		var typeDropdown = new OO.ui.DropdownInputWidget( {
 			options: [
-				{ data: '', label: mw.msg( 'extendedinputbox-formbuilder-type-none' ) },
-				{ data: 'search', label: mw.msg( 'extendedinputbox-formbuilder-type-search' ) },
-				{ data: 'create', label: mw.msg( 'extendedinputbox-formbuilder-type-create' ) },
-				{ data: 'comment', label: mw.msg( 'extendedinputbox-formbuilder-type-comment' ) },
-				{ data: 'move', label: mw.msg( 'extendedinputbox-formbuilder-type-move' ) }
+				{ data: '', label: mw.msg( 'extendedinputbox-special-type-none' ) },
+				{ data: 'search', label: mw.msg( 'extendedinputbox-special-type-search' ) },
+				{ data: 'create', label: mw.msg( 'extendedinputbox-special-type-create' ) },
+				{ data: 'comment', label: mw.msg( 'extendedinputbox-special-type-comment' ) },
+				{ data: 'move', label: mw.msg( 'extendedinputbox-special-type-move' ) }
 			],
 			value: g.type
 		} ).on( 'change', function ( val ) {
@@ -255,7 +259,7 @@
 			} );
 
 		var hideMarkerCheckbox = new OO.ui.CheckboxInputWidget( { selected: false } );
-		var markerInput = new OO.ui.TextInputWidget( { value: '', placeholder: '(obligatoire)' } )
+		var markerInput = new OO.ui.TextInputWidget( { value: '', placeholder: mw.msg( 'extendedinputbox-special-field-requiredmarker-placeholder' ) } )
 			.on( 'change', function ( val ) {
 				g.requiredMarker = hideMarkerCheckbox.isSelected() ? '' : ( val || null );
 				refreshGeneratedWikitext();
@@ -266,89 +270,89 @@
 			refreshGeneratedWikitext();
 		} );
 
-		var $grid =$( '<div>' ).addClass( 'eib-fb-general-grid' );
+		var $grid = $( '<div>' ).addClass( 'eib-sp-general-grid' );
 		[
-			new OO.ui.FieldLayout( typeDropdown, { label: mw.msg( 'extendedinputbox-formbuilder-field-type' ), align: 'top' } ),
-			textField( 'page', 'extendedinputbox-formbuilder-field-page' ),
-			textField( 'prefix', 'extendedinputbox-formbuilder-field-prefix' ),
-			textField( 'defaultVal', 'extendedinputbox-formbuilder-field-default' ),
-			textField( 'buttonlabel', 'extendedinputbox-formbuilder-field-buttonlabel' ),
-			textField( 'preload', 'extendedinputbox-formbuilder-field-preload' ),
-			textField( 'preloadParams', 'extendedinputbox-formbuilder-field-preloadparams' ),
-			textField( 'summary', 'extendedinputbox-formbuilder-field-summary' ),
-			textField( 'popupTitle', 'extendedinputbox-formbuilder-field-popuptitle' ),
-			textField( 'popupText', 'extendedinputbox-formbuilder-field-popuptext', true )
+			new OO.ui.FieldLayout( typeDropdown, { label: mw.msg( 'extendedinputbox-special-field-type' ), align: 'top' } ),
+			textField( 'page', 'extendedinputbox-special-field-page' ),
+			textField( 'prefix', 'extendedinputbox-special-field-prefix' ),
+			textField( 'defaultVal', 'extendedinputbox-special-field-default' ),
+			textField( 'buttonlabel', 'extendedinputbox-special-field-buttonlabel' ),
+			textField( 'preload', 'extendedinputbox-special-field-preload' ),
+			textField( 'preloadParams', 'extendedinputbox-special-field-preloadparams' ),
+			textField( 'summary', 'extendedinputbox-special-field-summary' ),
+			textField( 'popupTitle', 'extendedinputbox-special-field-popuptitle' ),
+			textField( 'popupText', 'extendedinputbox-special-field-popuptext', true )
 		].forEach( function ( layout ) {
 			$grid.append( layout.$element );
 		} );
 
-		var $advancedGrid =$( '<div>' ).addClass( 'eib-fb-general-grid' );
+		var $advancedGrid = $( '<div>' ).addClass( 'eib-sp-general-grid' );
 		[
-			textField( 'bgColor', 'extendedinputbox-formbuilder-field-bgcolor' ),
-			textField( 'borderColor', 'extendedinputbox-formbuilder-field-bordercolor' )
+			textField( 'bgColor', 'extendedinputbox-special-field-bgcolor' ),
+			textField( 'borderColor', 'extendedinputbox-special-field-bordercolor' )
 		].forEach( function ( layout ) {
 			$advancedGrid.append( layout.$element );
 		} );
 
 		$advancedGrid.append(
 			new OO.ui.FieldLayout( skipEditCheckbox, {
-				label: mw.msg( 'extendedinputbox-formbuilder-field-skipedit' ),
+				label: mw.msg( 'extendedinputbox-special-field-skipedit' ),
 				align: 'inline'
 			} ).$element
 		);
 
-		var $markerRow =$( '<div>' ).addClass( 'eib-fb-marker-row' ).append(
+		var $markerRow = $( '<div>' ).addClass( 'eib-sp-marker-row' ).append(
 			new OO.ui.FieldLayout( markerInput, {
-				label: mw.msg( 'extendedinputbox-formbuilder-field-requiredmarker' ),
+				label: mw.msg( 'extendedinputbox-special-field-requiredmarker' ),
 				align: 'top'
 			} ).$element,
-			$( '<label>' ).append( hideMarkerCheckbox.$element, ' ' + mw.msg( 'extendedinputbox-formbuilder-field-hidemarker' ) )
+			$( '<label>' ).append( hideMarkerCheckbox.$element, ' ' + mw.msg( 'extendedinputbox-special-field-hidemarker' ) )
 		);
 		$advancedGrid.append($markerRow );
 
-		var $advancedDetails =$( '<details>' ).addClass( 'eib-fb-advanced' ).append(
-			$( '<summary>' ).text( mw.msg( 'extendedinputbox-formbuilder-advanced-toggle' ) ),$advancedGrid
+		var $advancedDetails = $( '<details>' ).addClass( 'eib-sp-advanced' ).append(
+			$( '<summary>' ).text( mw.msg( 'extendedinputbox-special-advanced-toggle' ) ), $advancedGrid
 		);
 
-		var $panel =$( '<div>' );
+		var $panel = $( '<div>' );
 		if ( !skipHeading ) {
-			$panel.append($( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-section-general' ) ) );
+			$panel.append( $( '<h3>' ).text( mw.msg( 'extendedinputbox-special-section-general' ) ) );
 		}
-		return $panel.append( $grid,$advancedDetails );
+		return $panel.append( $grid, $advancedDetails );
 	}
 
 	function buildFieldRow( field, $list ) {
-		var $row =$( '<div>' )
-			.addClass( 'eib-fb-field-row' )
-			.attr( { draggable: true, 'data-field-id': field.id } );
+		var $row = $( '<div>' )
+			.addClass( 'eib-sp-field-row' )
+			.attr( { draggable: 'false', 'data-field-id': field.id } );
 
-		var $handle =$( '<span>' ).addClass( 'eib-fb-drag-handle' ).text( '⠿' )
-			.attr( 'title', mw.msg( 'extendedinputbox-formbuilder-drag-hint' ) );
+		var $handle = $( '<span>' ).addClass( 'eib-sp-drag-handle' ).text( '⠿' )
+			.attr( 'title', mw.msg( 'extendedinputbox-special-drag-hint' ) );
 
-		var nameInput = new OO.ui.TextInputWidget( { value: field.name, placeholder: mw.msg( 'extendedinputbox-formbuilder-field-row-name' ) } )
+		var nameInput = new OO.ui.TextInputWidget( { value: field.name, placeholder: mw.msg( 'extendedinputbox-special-field-row-name' ) } )
 			.on( 'change', function ( val ) { field.name = val; refreshGeneratedWikitext(); } );
 
 		var typeDropdown = new OO.ui.DropdownInputWidget( {
 			options: FIELD_TYPES.map( function ( t ) {
-				return { data: t, label: mw.msg( 'extendedinputbox-formbuilder-field-type-' + t ) };
+				return { data: t, label: mw.msg( 'extendedinputbox-special-field-type-' + t ) };
 			} ),
 			value: field.type
 		} ).on( 'change', function ( val ) { field.type = val; refreshGeneratedWikitext(); } );
 
-		var labelInput = new OO.ui.TextInputWidget( { value: field.label, placeholder: mw.msg( 'extendedinputbox-formbuilder-field-row-label' ) } )
+		var labelInput = new OO.ui.TextInputWidget( { value: field.label, placeholder: mw.msg( 'extendedinputbox-special-field-row-label' ) } )
 			.on( 'change', function ( val ) { field.label = val; refreshGeneratedWikitext(); } );
 
-		var optionsInput = new OO.ui.TextInputWidget( { value: field.options, placeholder: mw.msg( 'extendedinputbox-formbuilder-field-row-options' ) } )
+		var optionsInput = new OO.ui.TextInputWidget( { value: field.options, placeholder: mw.msg( 'extendedinputbox-special-field-row-options' ) } )
 			.on( 'change', function ( val ) { field.options = val; refreshGeneratedWikitext(); } );
 
-		var showIfInput = new OO.ui.TextInputWidget( { value: field.showIf, placeholder: mw.msg( 'extendedinputbox-formbuilder-field-row-showif' ) } )
+		var showIfInput = new OO.ui.TextInputWidget( { value: field.showIf, placeholder: mw.msg( 'extendedinputbox-special-field-row-showif' ) } )
 			.on( 'change', function ( val ) { field.showIf = val; refreshGeneratedWikitext(); } );
 
 		var requiredCheckbox = new OO.ui.CheckboxInputWidget( { selected: field.required } )
 			.on( 'change', function ( checked ) { field.required = checked; refreshGeneratedWikitext(); } );
 
 		var removeBtn = new OO.ui.ButtonWidget( {
-			label: mw.msg( 'extendedinputbox-formbuilder-btn-removefield' ),
+			label: mw.msg( 'extendedinputbox-special-btn-removefield' ),
 			flags: [ 'destructive' ],
 			framed: false
 		} ).on( 'click', function () {
@@ -356,46 +360,51 @@
 			renderFieldsList( $list );
 		} );
 
-		var upBtn = new OO.ui.ButtonWidget( { label: mw.msg( 'extendedinputbox-formbuilder-btn-moveup' ), framed: false } )
+		var upBtn = new OO.ui.ButtonWidget( { label: mw.msg( 'extendedinputbox-special-btn-moveup' ), framed: false } )
 			.on( 'click', function () { moveField( field.id, -1, $list ); } );
-		var downBtn = new OO.ui.ButtonWidget( { label: mw.msg( 'extendedinputbox-formbuilder-btn-movedown' ), framed: false } )
+		var downBtn = new OO.ui.ButtonWidget( { label: mw.msg( 'extendedinputbox-special-btn-movedown' ), framed: false } )
 			.on( 'click', function () { moveField( field.id, 1, $list ); } );
 
 		$row.append($handle,
-			$( '<div>' ).addClass( 'eib-fb-field-widget-small' ).append( nameInput.$element ),
-			$( '<div>' ).addClass( 'eib-fb-field-widget-small' ).append( typeDropdown.$element ),
-			$( '<div>' ).addClass( 'eib-fb-field-widget' ).append( labelInput.$element ),
-			$( '<div>' ).addClass( 'eib-fb-field-widget' ).append( optionsInput.$element ),
-			$( '<div>' ).addClass( 'eib-fb-field-widget' ).append( showIfInput.$element ),
-			$( '<label>' ).append( requiredCheckbox.$element, ' ' + mw.msg( 'extendedinputbox-formbuilder-field-row-required' ) ),
-			$( '<div>' ).addClass( 'eib-fb-field-actions' ).append( upBtn.$element, downBtn.$element, removeBtn.$element )
+			$( '<div>' ).addClass( 'eib-sp-field-widget-small' ).append( nameInput.$element ),
+			$( '<div>' ).addClass( 'eib-sp-field-widget-small' ).append( typeDropdown.$element ),
+			$( '<div>' ).addClass( 'eib-sp-field-widget' ).append( labelInput.$element ),
+			$( '<div>' ).addClass( 'eib-sp-field-widget' ).append( optionsInput.$element ),
+			$( '<div>' ).addClass( 'eib-sp-field-widget' ).append( showIfInput.$element ),
+			$( '<label>' ).append( requiredCheckbox.$element, ' ' + mw.msg( 'extendedinputbox-special-field-row-required' ) ),
+			$( '<div>' ).addClass( 'eib-sp-field-actions' ).append( upBtn.$element, downBtn.$element, removeBtn.$element )
 		);
 
-		bindDragEvents( $row,$list );
+		// Seule la poignée active le glisser-déposer (sinon impossible de
+		// sélectionner du texte dans les champs sous Firefox).
+		$handle.on( 'mousedown', function () { $row.attr( 'draggable', 'true' ); } )
+			.on( 'mouseup', function () { $row.attr( 'draggable', 'false' ); } );
+
+		bindDragEvents( $row, $list );
 
 		fieldRows[ field.id ] = $row;
 
 		return $row;
 	}
 
-	function bindDragEvents( $row,$list ) {
+	function bindDragEvents( $row, $list ) {
 		var dragSrcId = null;
 
 		$row.on( 'dragstart', function ( e ) {
 			dragSrcId = $row.attr( 'data-field-id' );
 			e.originalEvent.dataTransfer.effectAllowed = 'move';
 			e.originalEvent.dataTransfer.setData( 'text/plain', dragSrcId );
-			$row.addClass( 'eib-fb-dragging' );
+			$row.addClass( 'eib-sp-dragging' );
 		} );
 		$row.on( 'dragend', function () {
-			$row.removeClass( 'eib-fb-dragging' );$list.find( '.eib-fb-field-row' ).removeClass( 'eib-fb-dragover' );
+			$row.attr( 'draggable', 'false' ).removeClass( 'eib-sp-dragging' );$list.find( '.eib-sp-field-row' ).removeClass( 'eib-sp-dragover' );
 		} );
 		$row.on( 'dragover', function ( e ) {
 			e.preventDefault();
 			e.originalEvent.dataTransfer.dropEffect = 'move';
-			$row.addClass( 'eib-fb-dragover' );
+			$row.addClass( 'eib-sp-dragover' );
 		} );
-		$row.on( 'dragleave', function () {$row.removeClass( 'eib-fb-dragover' );
+		$row.on( 'dragleave', function () { $row.removeClass( 'eib-sp-dragover' );
 		} );
 		$row.on( 'drop', function ( e ) {
 			e.preventDefault();
@@ -429,22 +438,22 @@
 		renderFieldsList( $list );
 	}
 
-	function renderFieldsList( $list ) {$list.empty();
+	function renderFieldsList( $list ) { $list.empty();
 		fieldRows = {};
 		if ( !state.fields.length ) {
-			$list.append($( '<div>' ).addClass( 'eib-fb-empty-fields' ).text( mw.msg( 'extendedinputbox-formbuilder-no-fields' ) ) );
+			$list.append( $( '<div>' ).addClass( 'eib-sp-empty-fields' ).text( mw.msg( 'extendedinputbox-special-no-fields' ) ) );
 		}
 		state.fields.forEach( function ( field ) {
-			$list.append( buildFieldRow( field,$list ) );
+			$list.append( buildFieldRow( field, $list ) );
 		} );
 		refreshGeneratedWikitext();
 	}
 
 	function buildFieldsPanel( skipHeading ) {
-		var $list =$( '<div>' ).addClass( 'eib-fb-fields-list' );
+		var $list = $( '<div>' ).addClass( 'eib-sp-fields-list' );
 
 		var addBtn = new OO.ui.ButtonWidget( {
-			label: mw.msg( 'extendedinputbox-formbuilder-btn-addfield' ),
+			label: mw.msg( 'extendedinputbox-special-btn-addfield' ),
 			icon: 'add',
 			flags: [ 'progressive' ]
 		} ).on( 'click', function () {
@@ -462,9 +471,9 @@
 
 		renderFieldsList( $list );
 
-		var $panel =$( '<div>' );
+		var $panel = $( '<div>' );
 		if ( !skipHeading ) {
-			$panel.append($( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-section-fields' ) ) );
+			$panel.append( $( '<h3>' ).text( mw.msg( 'extendedinputbox-special-section-fields' ) ) );
 		}
 		return $panel.append( $list, addBtn.$element );
 	}
@@ -479,7 +488,7 @@
 			return deferred.promise();
 		}
 
-		var $tmp =$( '<textarea>' )
+		var $tmp = $( '<textarea>' )
 			.val( text )
 			.css( { position: 'fixed', top: '-1000px', left: '-1000px', opacity: 0 } )
 			.appendTo( 'body' );
@@ -499,22 +508,22 @@
 	}
 
 	function buildPreviewPanel() {
-		$generatedTextarea =$( '<textarea>' )
-			.addClass( 'eib-fb-generated-wikitext' )
+		$generatedTextarea = $( '<textarea>' )
+			.addClass( 'eib-sp-generated-wikitext' )
 			.attr( 'readonly', true );
 
-		$validationBox =$( '<div>' ).addClass( 'eib-fb-validation eib-fb-validation-hidden' );
+		$validationBox = $( '<div>' ).addClass( 'eib-sp-validation eib-sp-validation-hidden' );
 
-		var $copyStatus =$( '<span>' ).addClass( 'eib-fb-status' );
+		var $copyStatus = $( '<span>' ).addClass( 'eib-sp-status' );
 
 		var copyBtn = new OO.ui.ButtonWidget( {
-			label: mw.msg( 'extendedinputbox-formbuilder-btn-copy' ),
+			label: mw.msg( 'extendedinputbox-special-btn-copy' ),
 			icon: 'copy'
 		} ).on( 'click', function () {
 			copyToClipboard( generateWikitext() ).done( function () {
-				$copyStatus.removeClass( 'eib-fb-status-error' ).text( mw.msg( 'extendedinputbox-formbuilder-notice-copied' ) );
+				$copyStatus.removeClass( 'eib-sp-status-error' ).text( mw.msg( 'extendedinputbox-special-notice-copied' ) );
 			} ).fail( function () {
-				$copyStatus.addClass( 'eib-fb-status-error' ).text( mw.msg( 'extendedinputbox-formbuilder-error-copy-failed' ) );
+				$copyStatus.addClass( 'eib-sp-status-error' ).text( mw.msg( 'extendedinputbox-special-error-copy-failed' ) );
 			} );
 			setTimeout( function () {
 				$copyStatus.text( '' );
@@ -522,15 +531,15 @@
 		} );
 
 		var previewPopupBtn = new OO.ui.ButtonWidget( {
-			label: mw.msg( 'extendedinputbox-formbuilder-btn-previewpopup' ),
+			label: mw.msg( 'extendedinputbox-special-btn-previewpopup' ),
 			icon: 'eye'
 		} ).on( 'click', previewPopup );
 
 		refreshGeneratedWikitext();
 
-		return $( '<div>' ).append($( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-generated-label' ) ),
-			$generatedTextarea,$validationBox,
-			$( '<div>' ).addClass( 'eib-fb-toolbar' ).append( copyBtn.$element, previewPopupBtn.$element,$copyStatus )
+		return $( '<div>' ).append( $( '<h3>' ).text( mw.msg( 'extendedinputbox-special-generated-label' ) ),
+			$generatedTextarea, $validationBox,
+			$( '<div>' ).addClass( 'eib-sp-toolbar' ).append( copyBtn.$element, previewPopupBtn.$element, $copyStatus )
 		);
 	}
 
@@ -561,7 +570,7 @@
 			PreviewDialog.super.call( this, cfg );
 		}
 		OO.inheritClass( PreviewDialog, OO.ui.Dialog );
-		PreviewDialog.static.name = 'eibFormBuilderPreviewDialog';
+		PreviewDialog.static.name = 'eibSpecialPreviewDialog';
 		PreviewDialog.static.title = config.title || mw.msg( 'extendedinputbox-default-title' );
 		PreviewDialog.static.actions = [
 			{ action: 'cancel', label: mw.msg( 'extendedinputbox-btn-cancel' ), flags: [ 'safe', 'close' ] }
@@ -573,12 +582,12 @@
 			var fieldLayouts = {};
 			this.content = new OO.ui.PanelLayout( { padded: true, expanded: false } );
 
-			this.content.$element.append($( '<p>' ).addClass( 'eib-fb-preview-banner' )
-					.text( mw.msg( 'extendedinputbox-formbuilder-preview-popup-banner' ) )
+			this.content.$element.append( $( '<p>' ).addClass( 'eib-sp-preview-banner' )
+					.text( mw.msg( 'extendedinputbox-special-preview-popup-banner' ) )
 			);
 
 			if ( config.text ) {
-				this.content.$element.append($( '<p>' ).text( config.text ) );
+				this.content.$element.append( $( '<p>' ).text( config.text ) );
 			}
 
 			config.fields.forEach( function ( field ) {
@@ -730,26 +739,18 @@
 	function setStatus( text, isError ) {
 		if ( !$statusSpan ) {
 			return;
-		}$statusSpan.text( text || '' ).toggleClass( 'eib-fb-status-error', !!isError );
-	}
-
-	function tryEnhanceWithCodeMirror( $textarea ) {
-		if ( mw.loader.getState( 'ext.CodeMirror.v6.WikiEditor' ) === null &&
-			mw.loader.getState( 'ext.CodeMirror.v6' ) === null
-		) {
-			return;
-		}
+		}$statusSpan.text( text || '' ).toggleClass( 'eib-sp-status-error', !!isError );
 	}
 
 	function loadPage() {
-		var title = $.trim( targetTitleWidget.getValue() );
+		var title = targetTitleWidget.getValue().trim();
 		if ( !title ) {
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-notitle' ), true );
+			showNotice( mw.msg( 'extendedinputbox-special-error-notitle' ), true );
 			return;
 		}
 
 		clearNotice();
-		setStatus( mw.msg( 'extendedinputbox-formbuilder-status-loading' ) );
+		setStatus( mw.msg( 'extendedinputbox-special-status-loading' ) );
 		loadBtn.setDisabled( true );
 
 		var titleObj = mw.Title.newFromText( title );
@@ -768,7 +769,7 @@
 		} ).done( function ( res ) {
 			var page = res && res.query && res.query.pages && res.query.pages[ 0 ];
 			if ( !page ) {
-				showNotice( mw.msg( 'extendedinputbox-formbuilder-error-load', targetTitle ), true );
+				showNotice( mw.msg( 'extendedinputbox-special-error-load', targetTitle ), true );
 				return;
 			}
 
@@ -786,7 +787,7 @@
 
 			if ( page.missing ) {
 				$targetTextarea.val( '' );
-				showNotice( mw.msg( 'extendedinputbox-formbuilder-notice-newpage' ), 'notice' );
+				showNotice( mw.msg( 'extendedinputbox-special-notice-newpage' ), 'notice' );
 			} else {
 				var content = page.revisions && page.revisions[ 0 ] && page.revisions[ 0 ].slots &&
 					page.revisions[ 0 ].slots.main ? page.revisions[ 0 ].slots.main.content : '';
@@ -798,17 +799,17 @@
 				var detail = Array.isArray( actionErr ) ? errorsToText( actionErr ) : '';
 				showNotice(
 					detail ?
-						mw.msg( 'extendedinputbox-formbuilder-error-noedit-detailed', detail ) :
-						mw.msg( 'extendedinputbox-formbuilder-error-noedit' ),
+						mw.msg( 'extendedinputbox-special-error-noedit-detailed', detail ) :
+						mw.msg( 'extendedinputbox-special-error-noedit' ),
 					true
 				);
 			} else if ( !page.missing ) {
-				showNotice( mw.msg( 'extendedinputbox-formbuilder-notice-loaded' ), false );
+				showNotice( mw.msg( 'extendedinputbox-special-notice-loaded' ), false );
 			}
 
 			$previewBox.empty();
 		} ).fail( function ( code, data ) {
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-load', extractApiError( code, data ) ), true );
+			showNotice( mw.msg( 'extendedinputbox-special-error-load', extractApiError( code, data ) ), true );
 		} ).always( function () {
 			loadBtn.setDisabled( false );
 			setStatus( '' );
@@ -817,7 +818,7 @@
 
 	function insertHere() {
 		if ( target.title === null ) {
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noinsert' ), 'notice' );
+			showNotice( mw.msg( 'extendedinputbox-special-error-noinsert' ), 'notice' );
 			return;
 		}
 
@@ -839,19 +840,19 @@
 		ta.focus();
 		ta.setSelectionRange( newPos, newPos );
 
-		showNotice( mw.msg( 'extendedinputbox-formbuilder-notice-inserted' ), false );
+		showNotice( mw.msg( 'extendedinputbox-special-notice-inserted' ), false );
 	}
 
 	function previewHere() {
 		if ( target.title === null ) {
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noinsert' ), 'notice' );
+			showNotice( mw.msg( 'extendedinputbox-special-error-noinsert' ), 'notice' );
 			return;
 		}
 
 		clearNotice();
-		setStatus( mw.msg( 'extendedinputbox-formbuilder-status-previewing' ) );
+		setStatus( mw.msg( 'extendedinputbox-special-status-previewing' ) );
 		previewBtn.setDisabled( true );
-		$previewBox.empty().append($( '<em>' ).text( mw.msg( 'extendedinputbox-formbuilder-preview-loading' ) ) );
+		$previewBox.empty().append( $( '<em>' ).text( mw.msg( 'extendedinputbox-special-preview-loading' ) ) );
 
 		api.post( {
 			action: 'parse',
@@ -870,7 +871,7 @@
 			}
 		} ).fail( function ( code, data ) {
 			$previewBox.empty();
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-preview', extractApiError( code, data ) ), true );
+			showNotice( mw.msg( 'extendedinputbox-special-error-preview', extractApiError( code, data ) ), true );
 		} ).always( function () {
 			previewBtn.setDisabled( false );
 			setStatus( '' );
@@ -882,39 +883,45 @@
 			action: 'edit',
 			title: target.title,
 			text: $targetTextarea.val(),
-			summary: state.general.summary || mw.msg( 'extendedinputbox-formbuilder-summary-default' ),
+			summary: state.general.summary || mw.msg( 'extendedinputbox-special-summary-default' ),
 			errorformat: 'plaintext'
 		};
 		if ( target.baseTimestamp ) {
 			editData.basetimestamp = target.baseTimestamp;
 		}
+		if ( !target.exists ) {
+			// Ne pas écraser une page créée par quelqu'un d'autre entre-temps.
+			editData.createonly = 1;
+		}
 
 		publishBtn.setDisabled( true );
-		setStatus( mw.msg( 'extendedinputbox-formbuilder-status-publishing' ) );
+		setStatus( mw.msg( 'extendedinputbox-special-status-publishing' ) );
 
 		api.postWithToken( 'csrf', editData ).done( function ( res ) {
 			if ( res && res.edit && res.edit.result === 'Success' ) {
-				showNotice( mw.msg( 'extendedinputbox-formbuilder-notice-published' ), false );
+				showNotice( mw.msg( 'extendedinputbox-special-notice-published' ), false );
 				setTimeout( function () {
 					window.location.href = mw.util.getUrl( target.title );
 				}, 800 );
 			} else {
-				showNotice( mw.msg( 'extendedinputbox-formbuilder-error-publish', 'unknown' ), true );
+				showNotice( mw.msg( 'extendedinputbox-special-error-publish', 'unknown' ), true );
 				publishBtn.setDisabled( false );
 			}
 		} ).fail( function ( code, data ) {
 			var msg;
 			var detail = extractApiError( code, data );
-			if ( code === 'editconflict' ) {
-				msg = mw.msg( 'extendedinputbox-formbuilder-error-editconflict' );
+			if ( code === 'articleexists' ) {
+				msg = mw.msg( 'extendedinputbox-error-page-exists', target.title );
+			} else if ( code === 'editconflict' ) {
+				msg = mw.msg( 'extendedinputbox-special-error-editconflict' );
 			} else if ( code === 'permissiondenied' || code === 'protectedpage' || code === 'cantcreate' ||
 				code === 'blocked' || code === 'readonly'
 			) {
 				msg = detail && detail !== code ?
-					mw.msg( 'extendedinputbox-formbuilder-error-noedit-detailed', detail ) :
-					mw.msg( 'extendedinputbox-formbuilder-error-noedit' );
+					mw.msg( 'extendedinputbox-special-error-noedit-detailed', detail ) :
+					mw.msg( 'extendedinputbox-special-error-noedit' );
 			} else {
-				msg = mw.msg( 'extendedinputbox-formbuilder-error-publish', detail );
+				msg = mw.msg( 'extendedinputbox-special-error-publish', detail );
 			}
 			showNotice( msg, true );
 			publishBtn.setDisabled( false );
@@ -925,18 +932,18 @@
 
 	function publishPage() {
 		if ( target.title === null ) {
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noinsert' ), 'notice' );
+			showNotice( mw.msg( 'extendedinputbox-special-error-noinsert' ), 'notice' );
 			return;
 		}
 		if ( target.canEdit === false ) {
-			showNotice( mw.msg( 'extendedinputbox-formbuilder-error-noedit' ), true );
+			showNotice( mw.msg( 'extendedinputbox-special-error-noedit' ), true );
 			return;
 		}
 
 		clearNotice();
 
 		if ( target.exists ) {
-			OO.ui.confirm( mw.msg( 'extendedinputbox-formbuilder-confirm-overwrite' ) ).done( function ( confirmed ) {
+			OO.ui.confirm( mw.msg( 'extendedinputbox-special-confirm-overwrite' ) ).done( function ( confirmed ) {
 				if ( confirmed ) {
 					doPublish();
 				}
@@ -950,54 +957,53 @@
 
 	function buildTargetPanel() {
 		targetTitleWidget = new mw.widgets.TitleInputWidget( {
-			placeholder: mw.msg( 'extendedinputbox-formbuilder-field-target-title' ),
+			placeholder: mw.msg( 'extendedinputbox-special-field-target-title' ),
 			showMissing: true,
-			value: mw.config.get( 'extendedInputboxFormBuilderTarget' ) || ''
+			value: mw.config.get( 'extendedInputboxSpecialTarget' ) || ''
 		} );
 
 		loadBtn = new OO.ui.ButtonWidget( {
-			label: mw.msg( 'extendedinputbox-formbuilder-btn-load' ),
+			label: mw.msg( 'extendedinputbox-special-btn-load' ),
 			flags: [ 'progressive' ]
 		} ).on( 'click', loadPage );
 
-		$statusSpan =$( '<span>' ).addClass( 'eib-fb-status' );
+		$statusSpan = $( '<span>' ).addClass( 'eib-sp-status' );
 
-		var $titleRow =$( '<div>' ).addClass( 'eib-fb-toolbar' ).append(
+		var $titleRow = $( '<div>' ).addClass( 'eib-sp-toolbar' ).append(
 			targetTitleWidget.$element,
-			loadBtn.$element,$statusSpan
+			loadBtn.$element, $statusSpan
 		);
 
-		$targetTextarea =$( '<textarea>' ).addClass( 'eib-fb-target-textarea' )
-			.attr( 'placeholder', mw.msg( 'extendedinputbox-formbuilder-wikitext-label' ) );
-		tryEnhanceWithCodeMirror( $targetTextarea );
+		$targetTextarea = $( '<textarea>' ).addClass( 'eib-sp-target-textarea' )
+			.attr( 'placeholder', mw.msg( 'extendedinputbox-special-wikitext-label' ) );
 
 		var insertBtn = new OO.ui.ButtonWidget( {
-			label: mw.msg( 'extendedinputbox-formbuilder-btn-insert' ),
+			label: mw.msg( 'extendedinputbox-special-btn-insert' ),
 			icon: 'add',
 			flags: [ 'progressive' ]
 		} ).on( 'click', insertHere );
 
 		previewBtn = new OO.ui.ButtonWidget( {
-			label: mw.msg( 'extendedinputbox-formbuilder-btn-preview' )
+			label: mw.msg( 'extendedinputbox-special-btn-preview' )
 		} ).on( 'click', previewHere );
 
 		publishBtn = new OO.ui.ButtonWidget( {
-			label: mw.msg( 'extendedinputbox-formbuilder-btn-publish' ),
+			label: mw.msg( 'extendedinputbox-special-btn-publish' ),
 			flags: [ 'primary', 'progressive' ]
 		} ).on( 'click', publishPage );
 
-		var $actionRow =$( '<div>' ).addClass( 'eib-fb-toolbar' ).append(
+		var $actionRow = $( '<div>' ).addClass( 'eib-sp-toolbar' ).append(
 			insertBtn.$element, previewBtn.$element, publishBtn.$element
 		);
 
-		$noticeArea = $( '<div>' ).addClass( 'eib-fb-notice' );
-		$previewBox =$( '<div>' ).addClass( 'eib-fb-preview-box' );
+		$noticeArea = $( '<div>' ).addClass( 'eib-sp-notice' );
+		$previewBox = $( '<div>' ).addClass( 'eib-sp-preview-box' );
 
 		return $( '<div>' ).append(
-			$( '<h3>' ).text( mw.msg( 'extendedinputbox-formbuilder-section-target' ) ),$titleRow,
+			$( '<h3>' ).text( mw.msg( 'extendedinputbox-special-section-target' ) ), $titleRow,
 			$noticeArea,
-			$targetTextarea,$actionRow,
-			$( '<h4>' ).text( mw.msg( 'extendedinputbox-formbuilder-preview-label' ) ),$previewBox
+			$targetTextarea, $actionRow,
+			$( '<h4>' ).text( mw.msg( 'extendedinputbox-special-preview-label' ) ), $previewBox
 		);
 	}
 
@@ -1006,40 +1012,40 @@
 	// ---------------------------------------------------------------------
 
 	function init() {
-		var $root =$( '#eib-formbuilder-root' );
+		var $root = $( '#eib-special-root' );
 		if ( !$root.length ) {
 			return;
 		}
 
-		var $intro =$( '<p>' ).text( mw.msg( 'extendedinputbox-formbuilder-intro' ) );
+		var $intro = $( '<p>' ).text( mw.msg( 'extendedinputbox-special-intro' ) );
 
 		var generalTabPanel = new OO.ui.TabPanelLayout( 'general', {
-			label: mw.msg( 'extendedinputbox-formbuilder-section-general' ),
+			label: mw.msg( 'extendedinputbox-special-section-general' ),
 			expanded: false
 		} );
-		generalTabPanel.$element.addClass( 'eib-fb-tabpanel' ).append( buildGeneralPanel( true ) );
+		generalTabPanel.$element.addClass( 'eib-sp-tabpanel' ).append( buildGeneralPanel( true ) );
 
 		var fieldsTabPanel = new OO.ui.TabPanelLayout( 'fields', {
-			label: mw.msg( 'extendedinputbox-formbuilder-section-fields' ),
+			label: mw.msg( 'extendedinputbox-special-section-fields' ),
 			expanded: false
 		} );
-		fieldsTabPanel.$element.addClass( 'eib-fb-tabpanel' ).append( buildFieldsPanel( true ) );
+		fieldsTabPanel.$element.addClass( 'eib-sp-tabpanel' ).append( buildFieldsPanel( true ) );
 
 		var indexLayout = new OO.ui.IndexLayout( { expanded: false, framed: true } );
 		indexLayout.addTabPanels( [ generalTabPanel, fieldsTabPanel ] );
 		indexLayout.setTabPanel( 'general' );
 
-		var $left = $( '<div>' ).addClass( 'eib-fb-column' ).append($( '<div>' ).addClass( 'eib-fb-panel eib-fb-tabs-panel' ).append( indexLayout.$element ),$( '<div>' ).addClass( 'eib-fb-panel' ).append( buildPreviewPanel() )
+		var $left = $( '<div>' ).addClass( 'eib-sp-column' ).append( $( '<div>' ).addClass( 'eib-sp-panel eib-sp-tabs-panel' ).append( indexLayout.$element ), $( '<div>' ).addClass( 'eib-sp-panel' ).append( buildPreviewPanel() )
 		);
 
-		var $right = $( '<div>' ).addClass( 'eib-fb-column' ).append($( '<div>' ).addClass( 'eib-fb-panel' ).append( buildTargetPanel() )
+		var $right = $( '<div>' ).addClass( 'eib-sp-column' ).append( $( '<div>' ).addClass( 'eib-sp-panel' ).append( buildTargetPanel() )
 		);
 
 		$root.append(
-			$intro,$( '<div>' ).addClass( 'eib-fb' ).append( $left,$right )
+			$intro, $( '<div>' ).addClass( 'eib-sp' ).append( $left, $right )
 		);
 
-		var initialTarget = mw.config.get( 'extendedInputboxFormBuilderTarget' );
+		var initialTarget = mw.config.get( 'extendedInputboxSpecialTarget' );
 		if ( initialTarget ) {
 			loadPage();
 		}

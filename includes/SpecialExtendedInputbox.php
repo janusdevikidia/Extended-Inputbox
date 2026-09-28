@@ -8,7 +8,7 @@
  *
  * Toute la logique (construction du formulaire, chargement/insertion/
  * prévisualisation/publication) vit côté client dans
- * Modules/ext.extendedInputbox.formbuilder.js ; cette classe se contente de
+ * Modules/ext.extendedInputbox.special.js ; cette classe se contente de
  * préparer la page (titre, modules, éventuelle pré-sélection de la page
  * cible) et de vérifier que l'utilisateur a le droit d'éditer.
  */
@@ -40,16 +40,16 @@ class SpecialExtendedInputbox extends SpecialPage {
 	public function execute( $subPage ) {
 		$this->setHeaders();
 		$this->outputHeader();
-		// Vérifie le droit 'edit' déclaré au constructeur, ainsi que les
+		// Vérifie le droit 'edit' déclaré dans le constructeur de la classe, ainsi que les
 		// conditions génériques (lecture, blocage global, etc.).
 		$this->checkPermissions();
 
 		$out = $this->getOutput();
-		$out->setPageTitle( $this->msg( 'extendedinputbox-formbuilder-title' )->text() );
+		$out->setPageTitle( $this->msg( 'extendedinputbox-special-title' )->text() );
 		$out->setRobotPolicy( 'noindex,nofollow' );
 
-		$out->addModuleStyles( [ 'ext.extendedInputbox.formbuilder.styles' ] );
-		$out->addModules( [ 'ext.extendedInputbox.formbuilder' ] );
+		$out->addModuleStyles( [ 'ext.extendedInputbox.special.styles' ] );
+		$out->addModules( [ 'ext.extendedInputbox.special' ] );
 
 		// Permet de préremplir le champ "page cible" via Special:Extended-Inputbox/Ma_page
 		// ou Special:Extended-Inputbox?target=Ma_page, pratique pour un lien direct
@@ -59,10 +59,10 @@ class SpecialExtendedInputbox extends SpecialPage {
 			: $this->getRequest()->getText( 'target', '' );
 
 		$out->addJsConfigVars( [
-			'extendedInputboxFormBuilderTarget' => $requestedTarget,
+			'extendedInputboxSpecialTarget' => $requestedTarget,
 		] );
 
-		$out->addHTML( Html::element( 'div', [ 'id' => 'eib-formbuilder-root' ] ) );
+		$out->addHTML( Html::element( 'div', [ 'id' => 'eib-special-root' ] ) );
 	}
 
 	/**
@@ -73,7 +73,7 @@ class SpecialExtendedInputbox extends SpecialPage {
 	 * @return \Message
 	 */
 	public function getDescription() {
-		return $this->msg( 'extendedinputbox-formbuilder' );
+		return $this->msg( 'extendedinputbox-special' );
 	}
 
 	protected function getGroupName() {

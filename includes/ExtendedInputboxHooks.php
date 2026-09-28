@@ -31,7 +31,7 @@ class ExtendedInputboxHooks
 			// attendre le binding JavaScript. Les InputBox natifs restent utilisables
 			// sans réécriture DOM ni style inline supplémentaire.
 			$out->addInlineStyle(
-				'form[data-eib-index] input[type="submit"], form[data-eib-index] button[type="submit"] { pointer-events: none; }'
+				'html.client-js form[data-eib-index] input[type="submit"], html.client-js form[data-eib-index] button[type="submit"] { pointer-events: none; }'
 			);
 		}
 	}
@@ -47,12 +47,23 @@ class ExtendedInputboxHooks
 			return;
 		}
 
-		$wikitext = self::getExpandedWikitext($out, $title);
-		if (!$wikitext) {
+		// Le wikitexte sert à apparier les configs au DOM : il doit être celui de
+		// la révision AFFICHÉE. Pas de traitement pour les aperçus, anciennes
+		// révisions et diffs (le fallback JS s'en charge ou s'abstient).
+		if (!$out->isArticle() || $out->getRequest()->getCheck('diff')) {
+			return;
+		}
+		$shownRev = $out->getRevisionId();
+		if ($shownRev && (int) $shownRev !== (int) $title->getLatestRevID()) {
 			return;
 		}
 
-		$allConfigs = ExtendedInputboxConfig::extractConfigs($wikitext);
+		$blocks = self::getInputboxBlocks($out, $title);
+		if (!$blocks) {
+			return;
+		}
+
+		$allConfigs = ExtendedInputboxConfig::parseBlocks($blocks);
 		if (!$allConfigs) {
 			return;
 		}
@@ -65,37 +76,40 @@ class ExtendedInputboxHooks
 	}
 
 	/**
-	 * $parser->preprocess() (expansion de TOUS les modèles de la page) est
-	 * l'opération la plus coûteuse de ce hook, exécutée à chaque affichage de
-	 * page (pas de cache dédié ici). Comme le cas le plus fréquent est un
-	 * <inputbox> écrit directement dans le wikitexte de la page (sans modèle),
-	 * on évite cette expansion quand elle n'apporte rien : si le wikitexte brut
-	 * contient déjà littéralement un <inputbox>, il n'y a aucun besoin de
-	 * développer les modèles pour le trouver. On ne paie le coût du
-	 * preprocess() que pour le cas "imbriqué indirectement dans un modèle".
+	 * Retourne le contenu brut des <inputbox> effectivement rendus, modèles
+	 * développés (donc aussi ceux produits par des modèles, même si la page
+	 * contient déjà un <inputbox> littéral). Le résultat, léger, est mis en
+	 * cache (WAN cache) par révision + page_touched : l'expansion complète
+	 * n'est donc plus refaite à chaque vue, et le cache est invalidé quand un
+	 * modèle transcludé change (page_touched).
 	 *
-	 * @return string|null
+	 * @return string[]
 	 */
-	private static function getExpandedWikitext(OutputPage $out, Title $title)
+	private static function getInputboxBlocks(OutputPage $out, Title $title)
 	{
 		$services = MediaWikiServices::getInstance();
 		$wikiPage = $services->getWikiPageFactory()->newFromTitle($title);
-		$content = $wikiPage->getContent();
+		$cache = $services->getMainWANObjectCache();
+		$key = $cache->makeKey(
+			'extendedinputbox-blocks',
+			$title->getArticleID(),
+			$wikiPage->getLatest(),
+			$wikiPage->getTouched()
+		);
 
-		if (!$content instanceof WikitextContent) {
-			return null;
-		}
-
-		$rawWikitext = $content->getText();
-
-		if (stripos($rawWikitext, '<inputbox>') !== false) {
-			return $rawWikitext;
-		}
-
-		$parser = $services->getParserFactory()->create();
-		$options = ParserOptions::newFromContext($out->getContext());
-
-		return $parser->preprocess($rawWikitext, $title, $options);
+		return $cache->getWithSetCallback($key, $cache::TTL_DAY, static function () use ($services, $wikiPage, $title) {
+			$content = $wikiPage->getContent();
+			if (!$content instanceof WikitextContent) {
+				return [];
+			}
+			$raw = $content->getText();
+			if (stripos($raw, '<inputbox') === false && strpos($raw, '{{') === false) {
+				return [];
+			}
+			$parser = $services->getParserFactory()->create();
+			$expanded = $parser->preprocess($raw, $title, ParserOptions::newFromAnon());
+			return ExtendedInputboxConfig::extractRawBlocks($expanded);
+		});
 	}
 
 	private static function bakeIntoHtml(OutputPage $out, &$text, array $allConfigs)
@@ -155,7 +169,7 @@ class ExtendedInputboxHooks
 				foreach ($btnNodes as $btn) {
 					$containerModified = self::addInlineStyleAttr($btn, $inlineStyle) || $containerModified;
 					if (!empty($config['buttonBgColor'])) {
-						$containerModified = self::forceChildTextColor($btn, '#ffffff') || $containerModified;
+						$containerModified = self::forceChildTextColor($btn, ExtendedInputboxConfig::getContrastTextColor($config['buttonBgColor']) ?: '#ffffff') || $containerModified;
 					}
 				}
 			}
@@ -351,7 +365,7 @@ class ExtendedInputboxHooks
 	private static function buildButtonInlineStyle(array $config)
 	{
 		$bg = $config['buttonBgColor'] ?? '';
-		$textColor = $bg ? '#ffffff' : '';
+		$textColor = $bg ? ( ExtendedInputboxConfig::getContrastTextColor($bg) ?: '' ) : '';
 		$borderColor = $config['buttonBorderColor'] ?? 'transparent';
 
 		$rules = [];
@@ -387,7 +401,8 @@ class ExtendedInputboxHooks
 		if (!$container->parentNode) {
 			return false;
 		}
-		$div = $dom->createElement('div', htmlspecialchars(implode(' ', $errors), ENT_QUOTES, 'UTF-8'));
+		$div = $dom->createElement('div');
+		$div->appendChild($dom->createTextNode(implode(' ', $errors)));
 		$div->setAttribute('class', 'extended-inputbox-error');
 		$container->parentNode->insertBefore($div, $container->nextSibling);
 		return true;

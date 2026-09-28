@@ -2,19 +2,19 @@
  * formulaire à gauche, page cible (chargement/insertion/aperçu/publication)
  * à droite. Repasse en colonne unique sur petit écran. */
 
-.eib-fb {
+.eib-sp {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 1.5em;
 	margin-top: 1em;
 }
 
-.eib-fb-column {
+.eib-sp-column {
 	flex: 1 1 420px;
 	min-width: 320px;
 }
 
-.eib-fb-panel {
+.eib-sp-panel {
 	background: #fff;
 	border: 1px solid #a2a9b1;
 	border-radius: 2px;
@@ -22,7 +22,7 @@
 	margin-bottom: 1.2em;
 }
 
-.eib-fb-panel h3 {
+.eib-sp-panel h3 {
 	margin-top: 0;
 	border-bottom: 1px solid #eaecf0;
 	padding-bottom: 0.4em;
@@ -31,24 +31,24 @@
 /* Bloc <details> natif regroupant les réglages avancés (couleurs de bouton,
  * skip-edit, marqueur "requis") pour ne plus les afficher tous en
  * permanence au milieu des champs utilisés à chaque formulaire. */
-.eib-fb-advanced {
+.eib-sp-advanced {
 	margin-top: 0.8em;
 	border-top: 1px solid #eaecf0;
 	padding-top: 0.6em;
 }
 
-.eib-fb-advanced > summary {
+.eib-sp-advanced > summary {
 	cursor: pointer;
 	font-weight: 600;
 	color: #202122;
 	padding: 0.2em 0;
 }
 
-.eib-fb-advanced[open] > summary {
+.eib-sp-advanced[open] > summary {
 	margin-bottom: 0.4em;
 }
 
-.eib-fb-field-row {
+.eib-sp-field-row {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: flex-end;
@@ -58,28 +58,27 @@
 	padding: 0.6em;
 	margin-bottom: 0.6em;
 	background: #f8f9fa;
-	cursor: grab;
 }
 
-.eib-fb-field-row.eib-fb-dragging {
+.eib-sp-field-row.eib-sp-dragging {
 	opacity: 0.4;
 }
 
-.eib-fb-field-row.eib-fb-dragover {
+.eib-sp-field-row.eib-sp-dragover {
 	border-color: #36c;
 	border-style: dashed;
 }
 
 /* Surlignage direct de la ligne fautive (nom/libellé manquant, nom
  * dupliqué), en complément du bloc de warnings sous le wikitexte généré :
- * même palette orangée que .eib-fb-validation (avertissement préventif,
+ * même palette orangée que .eib-sp-validation (avertissement préventif,
  * pas une erreur bloquante). */
-.eib-fb-field-row.eib-fb-field-row-invalid {
+.eib-sp-field-row.eib-sp-field-row-invalid {
 	border-color: #ffa50e;
 	background: #fef6e7;
 }
 
-.eib-fb-field-row .eib-fb-drag-handle {
+.eib-sp-field-row .eib-sp-drag-handle {
 	cursor: grab;
 	color: #72777d;
 	user-select: none;
@@ -88,39 +87,39 @@
 	line-height: 2.2em;
 }
 
-.eib-fb-field-row .eib-fb-field-widget {
+.eib-sp-field-row .eib-sp-field-widget {
 	flex: 1 1 140px;
 	min-width: 110px;
 }
 
-.eib-fb-field-row .eib-fb-field-widget-small {
+.eib-sp-field-row .eib-sp-field-widget-small {
 	flex: 0 1 90px;
 	min-width: 70px;
 }
 
-.eib-fb-field-actions {
+.eib-sp-field-actions {
 	display: flex;
 	gap: 0.2em;
 }
 
 /* Panneau contenant l'IndexLayout (onglets "Général"/"Champs") : padding
- * réduit par rapport à .eib-fb-panel classique, l'IndexLayout gérant déjà
+ * réduit par rapport à .eib-sp-panel classique, l'IndexLayout gérant déjà
  * sa propre marge interne autour du contenu de chaque onglet. */
-.eib-fb-tabs-panel {
+.eib-sp-tabs-panel {
 	padding: 0;
 }
 
-.eib-fb-tabpanel {
+.eib-sp-tabpanel {
 	padding: 1em 1.2em 1.2em;
 }
 
-.eib-fb-empty-fields {
+.eib-sp-empty-fields {
 	color: #72777d;
 	font-style: italic;
 	margin-bottom: 0.6em;
 }
 
-.eib-fb-generated-wikitext {
+.eib-sp-generated-wikitext {
 	width: 100%;
 	box-sizing: border-box;
 	min-height: 8em;
@@ -128,7 +127,7 @@
 	font-size: 0.92em;
 }
 
-.eib-fb-target-textarea {
+.eib-sp-target-textarea {
 	width: 100%;
 	box-sizing: border-box;
 	min-height: 22em;
@@ -137,18 +136,18 @@
 	white-space: pre;
 }
 
-.eib-fb-toolbar {
+.eib-sp-toolbar {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5em;
 	margin: 0.6em 0;
 }
 
-.eib-fb-notice {
+.eib-sp-notice {
 	margin: 0.6em 0;
 }
 
-.eib-fb-preview-box {
+.eib-sp-preview-box {
 	border: 1px solid #eaecf0;
 	border-radius: 2px;
 	padding: 1em;
@@ -158,19 +157,19 @@
 	overflow: auto;
 }
 
-.eib-fb-status {
+.eib-sp-status {
 	font-size: 0.9em;
 	color: #14866d;
 	margin-left: 0.4em;
 }
 
-.eib-fb-status.eib-fb-status-error {
+.eib-sp-status.eib-sp-status-error {
 	color: #d33;
 }
 
 /* Bannière en tête du dialogue d'aperçu de la popup (openPreviewDialog) :
  * rappelle qu'il s'agit d'un aperçu non fonctionnel, pas la vraie popup. */
-.eib-fb-preview-banner {
+.eib-sp-preview-banner {
 	font-style: italic;
 	color: #54595d;
 	border-bottom: 1px solid #eaecf0;
@@ -183,7 +182,7 @@
  * "avertissement" (orangé) volontairement distincte de .extended-inputbox-error
  * (rouge, réservée aux erreurs bloquantes côté rendu final) : ici, rien
  * n'empêche de continuer à travailler, ce sont des signaux préventifs. */
-.eib-fb-validation {
+.eib-sp-validation {
 	margin-top: 0.5em;
 	border: 1px solid #ffe2a8;
 	background: #fef6e7;
@@ -191,15 +190,29 @@
 	padding: 0.5em 0.8em;
 }
 
-.eib-fb-validation.eib-fb-validation-hidden {
+.eib-sp-validation.eib-sp-validation-hidden {
 	display: none;
 }
 
-.eib-fb-validation-item {
+.eib-sp-validation-item {
 	color: #8a6d00;
 	font-size: 0.9em;
 }
 
-.eib-fb-validation-item + .eib-fb-validation-item {
+.eib-sp-validation-item + .eib-sp-validation-item {
 	margin-top: 0.3em;
+}
+/* Grille des réglages généraux et ligne du marqueur « requis » (classes
+ * posées par le JS mais jusqu'ici sans style). */
+.eib-sp-general-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 0 1em;
+}
+
+.eib-sp-marker-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 0.8em;
 }

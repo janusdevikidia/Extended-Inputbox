@@ -53,7 +53,7 @@
 		}
 		return errArray.map( function ( e ) {
 			var info = abuseFilterInfo( e );
-			var body = ( e && ( e.html || e.text ) ) || mw.html.escape( info.description );
+			var body = ( e && ( e.html || ( e.text ? mw.html.escape( e.text ) : '' ) ) ) || mw.html.escape( info.description );
 			if ( !body ) {
 				return '';
 			}
@@ -141,7 +141,7 @@
 		}
 		if ( data && data.error ) {
 			if ( data.error.html || data.error.info ) {
-				return data.error.html || data.error.info;
+				return data.error.html || mw.html.escape( data.error.info );
 			}
 			var fromDescription = mw.html.escape( abuseFilterInfo( data.error ).description );
 			if ( fromDescription ) {
@@ -194,6 +194,17 @@
 			} );
 		} );
 	} );
+
+	// Interdit la publication directe vers les pages sensibles (interface,
+	// scripts, styles, JSON) : une popup piégée y ferait publier du code au
+	// nom de l'utilisateur sans qu'il voie l'écran d'édition.
+	function isForbiddenSkipEditTarget( title ) {
+		var t = mw.Title.newFromText( title );
+		if ( !t ) {
+			return true;
+		}
+		return t.getNamespaceId() === 8 || /\.(js|css|json)$/i.test( t.getMain() );
+	}
 
 	function getISOWeek( d ) {
 		var date = new Date( Date.UTC( d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() ) );
@@ -263,14 +274,14 @@
 			'CURRENTWEEK': current.week,
 			'USER': userName,
 			'REVISIONUSER': userName,
-			'PAGENAME': pageName,
-			'FULLPAGENAME': pageName
+			'PAGENAME': mw.config.get( 'wgTitle' ) || pageName.replace( /_/g, ' ' ),
+			'FULLPAGENAME': pageName.replace( /_/g, ' ' )
 		};
 
 		var result = text;
 		Object.keys( magicMap ).forEach( function ( key ) {
 			var regex = new RegExp( '\\{\\{\\s*' + key + '\\s*\\}\\}', 'gi' );
-			result = result.replace( regex, magicMap[ key ] );
+			result = result.replace( regex, function () { return magicMap[ key ]; } );
 		} );
 
 		return result;
@@ -302,25 +313,19 @@
 
 	function replaceVariables( text, paramOrder, formData, fields ) {
 		if ( !text ) { return ''; }
-		var result = text;
 
 		var totalVars = Math.max( paramOrder.length, fields.length, 9 );
-		var items = [];
-
+		var values = {};
 		for ( var i = 0; i < totalVars; i++ ) {
 			var paramKey = paramOrder[ i ] || ( i < fields.length ? fields[ i ].name : ( i + 1 ).toString() );
-			var val = getParamValue( paramKey, i, formData, fields );
-			items.push( { num: i + 1, value: val } );
+			values[ i + 1 ] = getParamValue( paramKey, i, formData, fields );
 		}
 
-		items.sort( function ( a, b ) { return b.num - a.num; } );
-
-		items.forEach( function ( item ) {
-			var regex = new RegExp( '\\$' + item.num + '(?!\\d)', 'g' );
-			result = result.replace( regex, function () { return item.value; } );
+		// Passe unique : une valeur saisie contenant « $2 » n'est jamais
+		// re-substituée, et $10+ est géré.
+		return text.replace( /\$(\d+)/g, function ( match, n ) {
+			return Object.prototype.hasOwnProperty.call( values, n ) ? values[ n ] : match;
 		} );
-
-		return result;
 	}
 
 	// Seule option OOUI native encore utilisée pour les champs texte libre
@@ -606,6 +611,12 @@
 					var preloadTemplate = config.preload || config.rawParams.preload || '';
 
 					if ( config.skipEdit ) {
+						if ( isForbiddenSkipEditTarget( targetPage ) ) {
+							return $.Deferred().reject( new OO.ui.Error(
+								mw.msg( 'extendedinputbox-error-skipedit-forbidden', targetPage )
+							) );
+						}
+						var runSkipEdit = function () {
 						var fetchPreload = $.Deferred();
 
 						if ( preloadTemplate ) {
@@ -671,6 +682,11 @@
 								}
 							}
 
+							// Sans section=new, on ne doit jamais écraser une page existante.
+							if ( !editData.section ) {
+								editData.createonly = 1;
+							}
+
 							if ( editSummary ) {
 								editData.summary = editSummary;
 							}
@@ -679,12 +695,6 @@
 								dialog.close();
 								window.location.href = mw.util.getUrl( targetPage );
 							}, function ( code, data ) {
-								// DEBUG TEMPORAIRE — à retirer une fois le problème résolu :
-								// affiche la réponse brute de l'API dans la console du
-								// navigateur (F12 > Console) pour voir exactement ce que le
-								// serveur renvoie (data.errors, data.error, etc.).
-								// eslint-disable-next-line no-console
-								console.log( 'ExtendedInputBox debug — code:', code, 'data:', data );
 								// extractApiError() renvoie du HTML (contenu réel de la page
 								// de message du filtre, ex. sa <div>) : on l'insère tel quel,
 								// sans le ré-échapper. mw.message( key ).plain() donne le texte
@@ -693,6 +703,9 @@
 								// pour garder le HTML intact, puis on passe un élément jQuery à
 								// OO.ui.Error (accepté en plus du texte brut), qui affiche donc
 								// la mise en forme d'origine au lieu de l'échapper.
+								if ( code === 'articleexists' ) {
+									return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-page-exists', targetPage ) ) );
+								}
 								var errorHtml = extractApiError( code, data );
 								var template = mw.message( 'extendedinputbox-error-publish' ).plain();
 								return resolveMissingMessages( errorHtml, data ).then( function ( finalHtml ) {
@@ -705,6 +718,13 @@
 							// et on affiche l'erreur dans la popup, plutôt que de publier
 							// une page vide (voir commentaire plus haut).
 							return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-preload-fetch', preloadTemplate ) ) );
+						} );
+						};
+						// La publication directe contourne l'écran d'édition : on montre
+						// toujours la page cible avant d'écrire, car page=/preload= sont
+						// choisis par l'auteur de la page, pas par le visiteur.
+						return OO.ui.confirm( mw.msg( 'extendedinputbox-confirm-skipedit', targetPage ) ).then( function ( ok ) {
+							return ok ? runSkipEdit() : $.Deferred().resolve();
 						} );
 					}
 

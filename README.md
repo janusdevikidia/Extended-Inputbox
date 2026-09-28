@@ -5,7 +5,7 @@ Extension MediaWiki qui ajoute des formulaires en fenêtre modale aux balises
 plusieurs valeurs avant de créer ou modifier une page, de précharger un modèle
 et de personnaliser le bouton.
 
-Version actuelle : **3.0.0**. Compatible avec MediaWiki **1.39+** et avec
+Version actuelle : **3.0.1**. Compatible avec MediaWiki **1.39+** et avec
 l'extension **InputBox**.
 
 ## Prérequis
@@ -184,6 +184,32 @@ Les formats usuels de couleur CSS sont acceptés (`#3366cc`, `rgb(...)`,
 `hsl(...)` et les noms CSS). Une couleur invalide laisse le formulaire
 utilisable et affiche une erreur sous celui-ci.
 
+## Nouveautés de la 3.0.1
+
+Version de correction (aucune migration nécessaire) :
+
+* **Publication directe plus sûre.** `skip-edit` ne remplace plus une page
+  existante (`createonly` ; message dédié), demande confirmation en affichant la
+  page cible, et refuse les pages `MediaWiki:`, `.js`, `.css` et `.json`.
+* **Appariement wikitexte ↔ HTML fiabilisé.** `<nowiki />` auto-fermant ne
+  masque plus le reste de la page ; les exemples dans `<syntaxhighlight>`,
+  `<source>` et `<pre>` sont ignorés ; les `<inputbox>` issus de modèles sont
+  toujours pris en compte ; aperçus, anciennes révisions et diffs ne sont plus
+  traités avec le wikitexte de la version courante.
+* **Performances.** Les blocs `<inputbox>` sont mis en cache par révision (et
+  `page_touched`) : plus d'expansion de modèles à chaque vue.
+* **Couleurs.** La syntaxe moderne (`rgb(0 0 0 / 50%)`, `hsl(120deg 100% 50%)`,
+  `.5`) est acceptée côté serveur comme côté navigateur ; la couleur du texte
+  du bouton est choisie pour rester lisible sur fond clair.
+* **Variables et mots magiques.** `$1`…`$n` remplacés en une seule passe
+  (`$10+` géré, pas de re-substitution) ; `PAGENAME`/`FULLPAGENAME` sans
+  underscores ; plus d'interprétation de `$&` dans les valeurs.
+* **Sécurité.** Messages d'erreur d'API échappés ; `console.log` de debug retiré.
+* **Special:Extended-Inputbox.** Glisser-déposer limité à la poignée,
+  avertissement si `|` est saisi dans un champ, `createonly` à la publication
+  d'une nouvelle page, marqueur « requis » traduisible, CSS des grilles ajoutée.
+* Les boutons de popup ne sont désactivés que si JavaScript est actif.
+
 ## Nouveautés de la 3.0.0
 
 Cette version continue d'enrichir **Special:Extended-Inputbox**, toujours sans
@@ -254,8 +280,8 @@ Déroulé :
    `buttonlabel`, `preload`, couleurs de bouton, etc.) et ajoutez des champs
    de popup (`popup-field`) via le bouton « Ajouter un champ ». Les lignes de
    champs peuvent être réordonnées par glisser-déposer. Le wikitexte
-   correspondant est généré en direct dans le panneau de droite du
-   constructeur.
+   correspondant est généré en direct dans le panneau de gauche, sous les
+   onglets « Paramètres généraux » et « Champs de la popup ».
 2. **Chargement de la page cible** : saisissez le titre d'une page du wiki
    puis cliquez sur « Charger la page ». Le wikitexte actuel de la page
    s'affiche dans la zone d'édition ; si la page n'existe pas encore, une
