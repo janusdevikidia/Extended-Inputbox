@@ -24,7 +24,7 @@
 	"extendedinputbox-special-intro": "Construye visualmente un formulario <inputbox>, inserta después el wikitexto generado en una página de destino, previsualízalo y publícalo.",
 	"extendedinputbox-special-section-general": "Parámetros generales",
 	"extendedinputbox-special-section-fields": "Campos de la ventana emergente",
-	"extendedinputbox-special-section-target": "Página de destino",
+	"extendedinputbox-special-section-target": "Página objetivo",
 	"extendedinputbox-special-field-type": "Tipo",
 	"extendedinputbox-special-field-page": "Página (page=)",
 	"extendedinputbox-special-field-prefix": "Prefijo (prefix=)",
