@@ -20,7 +20,7 @@
 	"extendedinputbox-required-marker": "*",
 	"extendedinputbox-error-field-required": "Le champ « $1 » est obligatoire.",
 	"extendedinputbox-formbuilder": "Générateur de formulaires",
-	"extendedinputbox-formbuilder-title": "Générateur de formulaires",
+	"extendedinputbox-formbuilder-title": "Extended-Inputbox",
 	"extendedinputbox-formbuilder-intro": "Construisez visuellement un formulaire <inputbox>, puis insérez le wikitexte généré dans une page cible, prévisualisez-le et publiez-le.",
 	"extendedinputbox-formbuilder-section-general": "Paramètres généraux",
 	"extendedinputbox-formbuilder-section-fields": "Champs de la popup",
@@ -90,9 +90,10 @@
 	"extendedinputbox-formbuilder-status-publishing": "Publication…",
 	"extendedinputbox-formbuilder-error-noinsert": "Veuillez d'abord charger une page cible.",
 	"extendedinputbox-formbuilder-confirm-overwrite": "Cette page existe déjà. Voulez-vous l'écraser avec vos modifications ?",
-	"extendedinputbox-formbuilder-summary-default": "Insertion d'un formulaire via Special:FormBuilder",
+	"extendedinputbox-formbuilder-summary-default": "Insertion d'un formulaire via Special:Extended-Inputbox",
 	"extendedinputbox-formbuilder-advanced-toggle": "Options avancées",
 	"extendedinputbox-formbuilder-btn-previewpopup": "Aperçu de la popup",
         "extendedinputbox-error-filter": "Filtre anti-abus n° $1",
 	"extendedinputbox-formbuilder-preview-popup-banner": "Aperçu — ceci reproduit l'apparence de la popup telle que configurée ci-contre ; rien ne sera publié depuis cette fenêtre."
 }
+

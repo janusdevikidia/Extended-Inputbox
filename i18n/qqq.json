@@ -19,9 +19,9 @@
 	"extendedinputbox-error-duplicate-field": "Error shown when the same field name is used in more than one \"popup-field\" parameter within a single <inputbox>. Parameters:\n* $1 - the duplicated field name",
 	"extendedinputbox-required-marker": "Default short marker appended to a field's label when it is required (\"required=yes\" on \"popup-field\"). It can be overridden per form with \"required-marker=\" or \"popup-required-marker=\".",
 	"extendedinputbox-error-field-required": "Error shown when a required field (\"required=yes\" on \"popup-field\") is left empty at submission time. Parameters:\n* $1 - the field's label",
-	"extendedinputbox-formbuilder": "Name/description of Special:FormBuilder shown on Special:SpecialPages.",
-	"extendedinputbox-formbuilder-title": "Page title of Special:FormBuilder.",
-	"extendedinputbox-formbuilder-intro": "Short introductory text shown at the top of Special:FormBuilder.",
+	"extendedinputbox-formbuilder": "Name/description of Special:Extended-Inputbox shown on Special:SpecialPages.",
+	"extendedinputbox-formbuilder-title": "Page title of Special:Extended-Inputbox.",
+	"extendedinputbox-formbuilder-intro": "Short introductory text shown at the top of Special:Extended-Inputbox.",
 	"extendedinputbox-formbuilder-section-general": "Heading of the panel with the general <inputbox> parameters (type, page, buttonlabel, etc.).",
 	"extendedinputbox-formbuilder-section-fields": "Heading of the panel listing the popup-field rows of the form being built.",
 	"extendedinputbox-formbuilder-section-target": "Heading of the panel used to load, edit, preview and publish the target page.",
@@ -90,9 +90,10 @@
 	"extendedinputbox-formbuilder-status-publishing": "Transient status text shown next to the \"Load page\" button while the target page is being saved.",
 	"extendedinputbox-formbuilder-error-noinsert": "Error shown when trying to insert, preview or publish before a target page has been loaded.",
 	"extendedinputbox-formbuilder-confirm-overwrite": "Confirmation dialog shown before publishing changes to an already-existing page.",
-	"extendedinputbox-formbuilder-summary-default": "Default edit summary used when publishing from Special:FormBuilder without a custom \"summary=\" value.",
+	"extendedinputbox-formbuilder-summary-default": "Default edit summary used when publishing from Special:Extended-Inputbox without a custom \"summary=\" value.",
 	"extendedinputbox-formbuilder-advanced-toggle": "Label of the collapsible <details> section grouping the less commonly used general settings (required marker, button colors, skip-edit).",
 	"extendedinputbox-formbuilder-btn-previewpopup": "Label of the button that opens a read-only preview dialog reproducing the popup as currently configured, without publishing anything.",
         "extendedinputbox-error-filter": "Label shown before an AbuseFilter message. Parameters:\n* $1 - the filter number",
 	"extendedinputbox-formbuilder-preview-popup-banner": "Banner shown at the top of the popup preview dialog, clarifying that it is non-functional (no save/publish happens from it)."
 }
+

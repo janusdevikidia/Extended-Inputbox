@@ -186,7 +186,7 @@ utilisable et affiche une erreur sous celui-ci.
 
 ## Nouveautés de la 3.0.0
 
-Cette version continue d'enrichir **Special:FormBuilder**, toujours sans
+Cette version continue d'enrichir **Special:Extended-Inputbox**, toujours sans
 changer le format `<inputbox>` (aucune migration nécessaire) :
 
 * **Aperçu de la popup.** Un bouton « Aperçu de la popup » ouvre un dialogue
@@ -205,7 +205,7 @@ changer le format `<inputbox>` (aucune migration nécessaire) :
 
 ## Nouveautés de la 2.5.1
 
-Cette version corrige et enrichit **Special:FormBuilder**, sans changer le
+Cette version corrige et enrichit **Special:Extended-Inputbox**, sans changer le
 format `<inputbox>` lui-même (aucune migration nécessaire depuis la 2.5.0) :
 
 * **Message d'erreur de droits détaillé.** Auparavant, le panneau « Page
@@ -241,9 +241,9 @@ format `<inputbox>` lui-même (aucune migration nécessaire depuis la 2.5.0) :
   s'affiche désormais à côté du bouton « Charger la page » pendant les
   appels à l'API.
 
-## Special:FormBuilder
+## Special:Extended-Inputbox
 
-Cette extension fournit aussi une page spéciale **Special:FormBuilder** : une
+Cette extension fournit aussi une page spéciale **Special:Extended-Inputbox** : une
 interface visuelle pour construire un bloc `<inputbox>` (avec ses champs de
 popup) sans écrire le wikitexte à la main, puis l'insérer directement dans
 une page du wiki.
@@ -267,7 +267,7 @@ Déroulé :
    de la page via l'API (`action=parse`) ; « Publier » enregistre la page
    (`action=edit`, avec jeton CSRF) puis redirige vers celle-ci.
 
-L'accès à `Special:FormBuilder` nécessite le droit `edit` ; les vérifications
+L'accès à Special:Extended-Inputbox nécessite le droit `edit` ; les vérifications
 propres à la page cible (protection, blocage, conflit d'édition...) restent
 appliquées par l'API MediaWiki au moment de la publication et sont signalées
 dans l'interface.

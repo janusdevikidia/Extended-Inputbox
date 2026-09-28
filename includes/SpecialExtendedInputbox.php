@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Special:FormBuilder — interface visuelle permettant de construire un bloc
+ * Special:Extended-Inputbox — interface visuelle permettant de construire un bloc
  * <inputbox> (natif + paramètres étendus par cette extension), puis de
  * l'insérer dans le wikitexte d'une page cible chargée depuis l'API, avec
  * prévisualisation et publication directe.
@@ -12,7 +12,7 @@
  * préparer la page (titre, modules, éventuelle pré-sélection de la page
  * cible) et de vérifier que l'utilisateur a le droit d'éditer.
  */
-class SpecialFormBuilder extends SpecialPage {
+class SpecialExtendedInputbox extends SpecialPage {
 
 	public function __construct() {
 		// Droit 'edit' : cette page ne sert qu'à préparer une modification de
@@ -20,7 +20,7 @@ class SpecialFormBuilder extends SpecialPage {
 		// faire. Les vérifications spécifiques à LA page cible choisie (protection,
 		// blocage, etc.) restent de toute façon refaites par l'API MediaWiki
 		// elle-même au moment de action=edit, et gérées côté JS.
-		parent::__construct( 'FormBuilder', 'edit' );
+		parent::__construct( 'Extended-Inputbox', 'edit' );
 	}
 
 	/**
@@ -51,8 +51,8 @@ class SpecialFormBuilder extends SpecialPage {
 		$out->addModuleStyles( [ 'ext.extendedInputbox.formbuilder.styles' ] );
 		$out->addModules( [ 'ext.extendedInputbox.formbuilder' ] );
 
-		// Permet de préremplir le champ "page cible" via Special:FormBuilder/Ma_page
-		// ou Special:FormBuilder?target=Ma_page, pratique pour un lien direct
+		// Permet de préremplir le champ "page cible" via Special:Extended-Inputbox/Ma_page
+		// ou Special:Extended-Inputbox?target=Ma_page, pratique pour un lien direct
 		// depuis une autre page du wiki.
 		$requestedTarget = ( $subPage !== null && $subPage !== '' )
 			? $subPage
@@ -80,3 +80,4 @@ class SpecialFormBuilder extends SpecialPage {
 		return 'wiki';
 	}
 }
+

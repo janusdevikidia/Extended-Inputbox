@@ -20,7 +20,7 @@
 	"extendedinputbox-required-marker": "*",
 	"extendedinputbox-error-field-required": "The field \"$1\" is required.",
 	"extendedinputbox-formbuilder": "Form Builder",
-	"extendedinputbox-formbuilder-title": "Form Builder",
+	"extendedinputbox-formbuilder-title": "Extended-Inputbox",
 	"extendedinputbox-formbuilder-intro": "Visually build an <inputbox> form, then insert the generated wikitext into a target page, preview it and publish it.",
 	"extendedinputbox-formbuilder-section-general": "General settings",
 	"extendedinputbox-formbuilder-section-fields": "Popup fields",
@@ -90,9 +90,10 @@
 	"extendedinputbox-formbuilder-status-publishing": "Publishing…",
 	"extendedinputbox-formbuilder-error-noinsert": "Please load a target page first.",
 	"extendedinputbox-formbuilder-confirm-overwrite": "This page already exists. Do you want to overwrite it with your changes?",
-	"extendedinputbox-formbuilder-summary-default": "Form inserted via Special:FormBuilder",
+	"extendedinputbox-formbuilder-summary-default": "Form inserted via Special:Extended-Inputbox",
 	"extendedinputbox-formbuilder-advanced-toggle": "Advanced options",
 	"extendedinputbox-formbuilder-btn-previewpopup": "Preview popup",
         "extendedinputbox-error-filter": "Abuse filter #$1",
 	"extendedinputbox-formbuilder-preview-popup-banner": "Preview — this reproduces the popup's appearance as currently configured; nothing will be published from this window."
 }
+

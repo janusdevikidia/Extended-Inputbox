@@ -3,7 +3,7 @@
 	'use strict';
 
 	/**
-	 * Special:FormBuilder
+	 * Special:Extended-Inputbox 
 	 *
 	 * Workflow :
 	 *  1) Construction visuelle d'un bloc <inputbox> (paramètres généraux +

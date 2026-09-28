@@ -13,10 +13,10 @@
     "AutoloadClasses": {
         "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php",
         "ExtendedInputboxConfig": "includes/ExtendedInputboxConfig.php",
-        "SpecialFormBuilder": "includes/SpecialFormBuilder.php"
+        "SpecialExtendedInputbox": "includes/SpecialExtendedInputbox.php"
     },
     "SpecialPages": {
-        "FormBuilder": "SpecialFormBuilder"
+        "Extended-Inputbox": "SpecialExtendedInputbox"
     },
     "ResourceFileModulePaths": {
         "localBasePath": "",
@@ -179,6 +179,7 @@
         ]
     },
     "ExtensionMessagesFiles": {
-    "FormBuilderAlias": "FormBuilder.alias.php"
+    "ExtendedInputboxAlias": "ExtendedInputbox.alias.php"
     }
 }
+
