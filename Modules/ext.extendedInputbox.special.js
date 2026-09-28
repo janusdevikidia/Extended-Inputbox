@@ -32,6 +32,7 @@
 			popupText: '',
 			requiredMarker: null, // null = non défini ; chaîne (même vide) = surchargé
 			skipEdit: false,
+			hidden: false,
 			bgColor: '',
 			borderColor: ''
 		},
@@ -167,6 +168,9 @@
 		pushIf( 'preload', g.preload );
 		pushIf( 'preload-params', g.preloadParams );
 		pushIf( 'summary', g.summary );
+		if ( g.hidden ) {
+			lines.push( 'hidden=yes' );
+		}
 		pushIf( 'popup-title', g.popupTitle );
 		pushIf( 'popup-text', g.popupText );
 		if ( g.requiredMarker !== null ) {
@@ -258,6 +262,12 @@
 				refreshGeneratedWikitext();
 			} );
 
+		var hiddenCheckbox = new OO.ui.CheckboxInputWidget( { selected: g.hidden } )
+			.on( 'change', function ( checked ) {
+				g.hidden = checked;
+				refreshGeneratedWikitext();
+			} );
+
 		var hideMarkerCheckbox = new OO.ui.CheckboxInputWidget( { selected: false } );
 		var markerInput = new OO.ui.TextInputWidget( { value: '', placeholder: mw.msg( 'extendedinputbox-special-field-requiredmarker-placeholder' ) } )
 			.on( 'change', function ( val ) {
@@ -293,6 +303,13 @@
 		].forEach( function ( layout ) {
 			$advancedGrid.append( layout.$element );
 		} );
+
+		$advancedGrid.append(
+			new OO.ui.FieldLayout( hiddenCheckbox, {
+				label: mw.msg( 'extendedinputbox-special-field-hidden' ),
+				align: 'inline'
+			} ).$element
+		);
 
 		$advancedGrid.append(
 			new OO.ui.FieldLayout( skipEditCheckbox, {

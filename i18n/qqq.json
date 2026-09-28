@@ -99,5 +99,6 @@
 	"extendedinputbox-special-warning-pipe-in-field": "Live validation warning: a popup-field row contains a pipe character. Parameters:\n* $1 - the 1-based position of the field row",
 	"extendedinputbox-error-page-exists": "Error shown when publishing would overwrite an existing page while creating. Parameters:\n* $1 - the page title",
 	"extendedinputbox-confirm-skipedit": "Confirmation shown before a skip-edit publication. Parameters:\n* $1 - the target page title",
-	"extendedinputbox-error-skipedit-forbidden": "Error shown when skip-edit targets a sensitive page (MediaWiki namespace, .js/.css/.json). Parameters:\n* $1 - the target page title"
+	"extendedinputbox-error-skipedit-forbidden": "Error shown when skip-edit targets a sensitive page (MediaWiki namespace, .js/.css/.json). Parameters:\n* $1 - the target page title",
+	"extendedinputbox-special-field-hidden": "Label of the checkbox for the InputBox \"hidden=yes\" parameter."
 }

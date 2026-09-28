@@ -99,5 +99,6 @@
 	"extendedinputbox-special-warning-pipe-in-field": "Le champ n°$1 contient le caractère « | », réservé comme séparateur : il faussera le wikitexte généré.",
 	"extendedinputbox-error-page-exists": "La page « $1 » existe déjà et n'a pas été modifiée.",
 	"extendedinputbox-confirm-skipedit": "Cette action va publier directement la page « $1 », sans passer par l'écran d'édition. Continuer ?",
-	"extendedinputbox-error-skipedit-forbidden": "La publication directe vers « $1 » n'est pas autorisée (pages d'interface, de script, de style et JSON exclues)."
+	"extendedinputbox-error-skipedit-forbidden": "La publication directe vers « $1 » n'est pas autorisée (pages d'interface, de script, de style et JSON exclues).",
+	"extendedinputbox-special-field-hidden": "Masqué (hidden=yes)"
 }

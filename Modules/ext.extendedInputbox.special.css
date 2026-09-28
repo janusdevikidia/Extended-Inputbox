@@ -207,7 +207,16 @@
 .eib-sp-general-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-	gap: 0 1em;
+	gap: 0.8em 1em;
+	/* Chaque champ colle en bas de sa cellule : les zones de saisie restent
+	 * alignées d'une colonne à l'autre même quand un libellé passe sur 2 lignes. */
+	align-items: end;
+}
+
+/* OOUI ajoute une marge haute entre FieldLayout voisins : dans la grille, elle
+ * décalait la 2e colonne par rapport à la 1re. */
+.eib-sp-general-grid > .oo-ui-fieldLayout {
+	margin-top: 0;
 }
 
 .eib-sp-marker-row {

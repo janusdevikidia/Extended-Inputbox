@@ -13,7 +13,7 @@
 	"extendedinputbox-error-unresolved-title": "El título de página generado contiene llaves sin resolver: $1. Comprueba el parámetro «page=» de la configuración de <inputbox>.",
 	"extendedinputbox-error-preload-fetch": "No se pudo obtener la plantilla de precarga «$1». La página no se ha publicado. Comprueba que la plantilla existe e inténtalo de nuevo.",
 	"extendedinputbox-error-publish": "Error al publicar: $1",
-	"extendedinputbox-error-popup-preload-deprecated": "Error: el parámetro «popup-preload» ya no está soportado. Utiliza únicamente «preload».",
+	"extendedinputbox-error-popup-preload-deprecated": "Error: el parámetro «popup-preload» ya no es compatible. Utiliza únicamente «preload».",
 	"extendedinputbox-error-invalid-bgcolor": "Error: el valor de «button-bgcolor» no es un color CSS válido.",
 	"extendedinputbox-error-invalid-bordercolor": "Error: el valor de «button-border-color» no es un color CSS válido.",
 	"extendedinputbox-error-duplicate-field": "Error: el nombre de campo «$1» se utiliza varias veces en este formulario.",
@@ -99,5 +99,6 @@
 	"extendedinputbox-special-warning-pipe-in-field": "El campo n.º $1 contiene el carácter «|», reservado como separador: falseará el wikitexto generado.",
 	"extendedinputbox-error-page-exists": "La página «$1» ya existe y no se ha modificado.",
 	"extendedinputbox-confirm-skipedit": "Esto publicará directamente la página «$1», sin pasar por la pantalla de edición. ¿Continuar?",
-	"extendedinputbox-error-skipedit-forbidden": "No se permite la publicación directa en «$1» (se excluyen las páginas de interfaz, script, estilo y JSON)."
+	"extendedinputbox-error-skipedit-forbidden": "No se permite la publicación directa en «$1» (se excluyen las páginas de interfaz, script, estilo y JSON).",
+	"extendedinputbox-special-field-hidden": "Oculto (hidden=yes)"
 }

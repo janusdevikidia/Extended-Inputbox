@@ -99,5 +99,6 @@
 	"extendedinputbox-special-warning-pipe-in-field": "Field #$1 contains the \"|\" character, which is the segment separator: it will corrupt the generated wikitext.",
 	"extendedinputbox-error-page-exists": "The page \"$1\" already exists and was not modified.",
 	"extendedinputbox-confirm-skipedit": "This will publish the page \"$1\" directly, without showing the edit screen. Continue?",
-	"extendedinputbox-error-skipedit-forbidden": "Direct publication to \"$1\" is not allowed (interface, script, style and JSON pages are excluded)."
+	"extendedinputbox-error-skipedit-forbidden": "Direct publication to \"$1\" is not allowed (interface, script, style and JSON pages are excluded).",
+	"extendedinputbox-special-field-hidden": "Hidden (hidden=yes)"
 }
