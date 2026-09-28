@@ -16,27 +16,33 @@
 	}
 
 	/**
-	 * Cherche la description d'un filtre AbuseFilter dans une entrée d'erreur.
-	 * C'est le NOM/résumé configuré pour le filtre (visible dans Spécial:
-	 * AbuseFilter), pas le contenu de sa page de message personnalisée
-	 * (ex. MediaWiki:Abusefilter-disallowed-1) : on ne l'utilise donc qu'en
-	 * dernier recours, quand cette page de message est absente/vide.
+	 * Extrait d'une entrée d'erreur AbuseFilter : le numéro du filtre, sa
+	 * description, et le nom de la page MediaWiki: du message affiché. Le code
+	 * d'erreur de l'API est la clé du message (ex. "abusefilter-disallowed-noip"),
+	 * donc la page est "MediaWiki:Abusefilter-disallowed-noip".
 	 *
 	 * @param {Object} e Une entrée de data.errors[] (ou data.error en bc)
-	 * @return {string} Chaîne vide si rien d'exploitable.
+	 * @return {{id: (string|number|undefined), description: string, page: string}}
 	 */
-	function abuseFilterDescription( e ) {
-		var af = e && ( ( e.data && e.data.abusefilter ) || e.abusefilter );
-		return ( af && af.description ) || '';
+	function abuseFilterInfo( e ) {
+		var af = ( e && ( ( e.data && e.data.abusefilter ) || e.abusefilter ) ) || {};
+		// Le code d'erreur est souvent générique ("abusefilter-disallowed") : la
+		// vraie clé du message personnalisé n'apparaît que si la page est absente
+		// (MediaWiki affiche alors "⧼abusefilter-disallowed-1⧽" dans le HTML).
+		var m = e && e.html && e.html.match( /\u29FC([^\u29FD]+)\u29FD/ );
+		var key = m ? m[ 1 ] : ( ( e && e.code ) || '' );
+		var page = /^abusefilter-/i.test( key ) ?
+			'MediaWiki:' + key.charAt( 0 ).toUpperCase() + key.slice( 1 ) : '';
+		return { id: af.id, description: af.description || '', page: page };
 	}
 
 	/**
 	 * Convertit un tableau d'erreurs au format `errorformat=html` de l'API
 	 * MediaWiki (ex. avertissements AbuseFilter) en un unique fragment HTML.
-	 * Priorité au VRAI contenu de la page de message du filtre
-	 * (`e.html`, ex. la <div> de MediaWiki:Abusefilter-disallowed-1), qui peut
-	 * contenir de la mise en forme ; la description du filtre (nom générique)
-	 * n'est utilisée qu'en dernier recours pour cette entrée.
+	 * Pour un filtre AbuseFilter, préfixe le numéro du filtre et le nom de la
+	 * page de message, puis affiche le VRAI contenu rendu de cette page
+	 * (`e.html`, avec ses <div>/wikicode). La description du filtre n'est
+	 * utilisée qu'en dernier recours.
 	 *
 	 * @param {Array|undefined} errArray
 	 * @return {string} Chaîne vide (HTML) si rien d'exploitable.
@@ -46,8 +52,71 @@
 			return '';
 		}
 		return errArray.map( function ( e ) {
-			return ( e && ( e.html || e.text ) ) || abuseFilterDescription( e ) || '';
-		} ).filter( Boolean ).join( ' ' );
+			var info = abuseFilterInfo( e );
+			var body = ( e && ( e.html || e.text ) ) || mw.html.escape( info.description );
+			if ( !body ) {
+				return '';
+			}
+			var head = '';
+			if ( info.id ) {
+				head = '<p><strong>' +
+					mw.html.escape( mw.msg( 'extendedinputbox-error-filter', info.id ) ) +
+					( info.page ? ' (' + mw.html.escape( info.page ) + ')' : '' ) +
+					'</strong></p>';
+			}
+			return head + '<div class="eib-filter-message">' + body + '</div>';
+		} ).filter( Boolean ).join( '' );
+	}
+
+	/**
+	 * Si l'API a rendu un message manquant sous la forme "⧼clé⧽" (ex.
+	 * ⧼abusefilter-disallowed-1⧽), va chercher soi-même le contenu de la page
+	 * MediaWiki:<clé> via action=parse et le substitue. Les paramètres $1
+	 * (description) et $2 (numéro du filtre) sont remplacés comme le ferait
+	 * MediaWiki. Si la page n'existe vraiment pas, le "⧼clé⧽" est conservé.
+	 *
+	 * @param {string} html HTML retourné par extractApiError()
+	 * @param {Object} data Objet d'erreur complet de l'API
+	 * @return {jQuery.Promise} Résolue avec le HTML final (jamais rejetée).
+	 */
+	function resolveMissingMessages( html, data ) {
+		var re = /\u29FC([^\u29FD]+)\u29FD/g;
+		var keys = [];
+		var m;
+		while ( ( m = re.exec( html ) ) ) {
+			if ( keys.indexOf( m[ 1 ] ) === -1 ) {
+				keys.push( m[ 1 ] );
+			}
+		}
+		if ( !keys.length ) {
+			return $.Deferred().resolve( html ).promise();
+		}
+		var first = ( data && data.errors && data.errors[ 0 ] ) || ( data && data.error ) || {};
+		var info = abuseFilterInfo( first );
+		return $.when.apply( $, keys.map( function ( key ) {
+			var page = 'MediaWiki:' + key.charAt( 0 ).toUpperCase() + key.slice( 1 );
+			return getApi().get( {
+				action: 'parse',
+				page: page,
+				prop: 'text',
+				disablelimitreport: 1,
+				disableeditsection: 1,
+				formatversion: 2
+			} ).then( function ( res ) {
+				return { key: key, html: ( res && res.parse && res.parse.text ) || '' };
+			}, function () {
+				return $.Deferred().resolve( { key: key, html: '' } );
+			} );
+		} ) ).then( function () {
+			Array.prototype.slice.call( arguments ).forEach( function ( r ) {
+				if ( !r.html ) { return; }
+				var body = r.html
+					.replace( /\$1/g, function () { return mw.html.escape( info.description ); } )
+					.replace( /\$2/g, function () { return mw.html.escape( String( info.id || '' ) ); } );
+				html = html.split( '\u29FC' + r.key + '\u29FD' ).join( body );
+			} );
+			return html;
+		} );
 	}
 
 	/**
@@ -74,7 +143,7 @@
 			if ( data.error.html || data.error.info ) {
 				return data.error.html || data.error.info;
 			}
-			var fromDescription = abuseFilterDescription( data.error );
+			var fromDescription = mw.html.escape( abuseFilterInfo( data.error ).description );
 			if ( fromDescription ) {
 				return fromDescription;
 			}
@@ -626,8 +695,10 @@
 								// la mise en forme d'origine au lieu de l'échapper.
 								var errorHtml = extractApiError( code, data );
 								var template = mw.message( 'extendedinputbox-error-publish' ).plain();
-								var combined = template.replace( '$1', errorHtml );
-								return $.Deferred().reject( new OO.ui.Error( $( '<div>' ).html( combined ) ) );
+								return resolveMissingMessages( errorHtml, data ).then( function ( finalHtml ) {
+									var combined = template.replace( '$1', function () { return finalHtml; } );
+									return $.Deferred().reject( new OO.ui.Error( $( '<div>' ).html( combined ) ) );
+								} );
 							} );
 						}, function () {
 							// Échec de récupération du preload : on bloque la publication
@@ -688,4 +759,5 @@
 
 } )( jQuery, mediaWiki );
 // </nowiki>
+
 
