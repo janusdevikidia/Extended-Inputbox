@@ -5,7 +5,8 @@ Extension MediaWiki qui ajoute des formulaires en fenêtre modale aux balises
 plusieurs valeurs avant de créer ou modifier une page, de précharger un modèle
 et de personnaliser le bouton.
 
-Compatible avec MediaWiki **1.39+** et avec l'extension **InputBox**.
+Version actuelle : **3.0.1**. Compatible avec MediaWiki **1.39+** et avec
+l'extension **InputBox**.
 
 ## Prérequis
 
@@ -182,6 +183,120 @@ button-border-color=#1a3d7c
 Les formats usuels de couleur CSS sont acceptés (`#3366cc`, `rgb(...)`,
 `hsl(...)` et les noms CSS). Une couleur invalide laisse le formulaire
 utilisable et affiche une erreur sous celui-ci.
+
+## Nouveautés de la 3.0.1
+
+Version de correction (aucune migration nécessaire) :
+
+* **Publication directe plus sûre.** `skip-edit` ne remplace plus une page
+  existante (`createonly` ; message dédié), demande confirmation en affichant la
+  page cible, et refuse les pages `MediaWiki:`, `.js`, `.css` et `.json`.
+* **Appariement wikitexte ↔ HTML fiabilisé.** `<nowiki />` auto-fermant ne
+  masque plus le reste de la page ; les exemples dans `<syntaxhighlight>`,
+  `<source>` et `<pre>` sont ignorés ; les `<inputbox>` issus de modèles sont
+  toujours pris en compte ; aperçus, anciennes révisions et diffs ne sont plus
+  traités avec le wikitexte de la version courante.
+* **Performances.** Les blocs `<inputbox>` sont mis en cache par révision (et
+  `page_touched`) : plus d'expansion de modèles à chaque vue.
+* **Couleurs.** La syntaxe moderne (`rgb(0 0 0 / 50%)`, `hsl(120deg 100% 50%)`,
+  `.5`) est acceptée côté serveur comme côté navigateur ; la couleur du texte
+  du bouton est choisie pour rester lisible sur fond clair.
+* **Variables et mots magiques.** `$1`…`$n` remplacés en une seule passe
+  (`$10+` géré, pas de re-substitution) ; `PAGENAME`/`FULLPAGENAME` sans
+  underscores ; plus d'interprétation de `$&` dans les valeurs.
+* **Sécurité.** Messages d'erreur d'API échappés ; `console.log` de debug retiré.
+* **Special:Extended-Inputbox.** Glisser-déposer limité à la poignée,
+  avertissement si `|` est saisi dans un champ, `createonly` à la publication
+  d'une nouvelle page, marqueur « requis » traduisible, CSS des grilles ajoutée.
+* Les boutons de popup ne sont désactivés que si JavaScript est actif.
+
+## Nouveautés de la 3.0.0
+
+Cette version continue d'enrichir **Special:Extended-Inputbox**, toujours sans
+changer le format `<inputbox>` (aucune migration nécessaire) :
+
+* **Aperçu de la popup.** Un bouton « Aperçu de la popup » ouvre un dialogue
+  qui reproduit fidèlement l'apparence de la popup telle que configurée
+  (titre, texte d'introduction, champs, conditions `show-if`, marqueur de
+  champ requis...), sans rien publier. Une bannière rappelle qu'il s'agit
+  d'un aperçu non fonctionnel.
+* **Options avancées repliées.** Les réglages moins utilisés (marqueur de
+  champ requis, couleurs de bouton, publication directe) sont désormais
+  regroupés dans un bloc repliable « Options avancées », pour ne plus
+  encombrer le formulaire principal.
+* **Repérage visuel des champs incomplets.** En plus de l'avertissement
+  textuel déjà affiché sous le wikitexte généré, la ligne du champ fautif
+  (nom manquant, libellé manquant ou nom dupliqué) est désormais surlignée
+  directement dans la liste des champs.
+
+## Nouveautés de la 2.5.1
+
+Cette version corrige et enrichit **Special:Extended-Inputbox**, sans changer le
+format `<inputbox>` lui-même (aucune migration nécessaire depuis la 2.5.0) :
+
+* **Message d'erreur de droits détaillé.** Auparavant, le panneau « Page
+  cible » affichait systématiquement le même message générique (« Vous
+  n'avez pas les droits nécessaires pour modifier cette page ») dès que le
+  test de permission échouait, sans indiquer la raison réelle (page
+  protégée, blocage, wiki en lecture seule, filtre anti-abus...). Ce test
+  est un comportement normal de MediaWiki — pas un bug — mais le message
+  ne donnait aucun moyen de comprendre *pourquoi*. Le détail renvoyé par
+  l'API est maintenant affiché quand il est disponible (ex. « Vous n'avez
+  pas les droits nécessaires pour modifier cette page : Cette page a été
+  protégée... »), aussi bien au chargement qu'à la publication.
+* **Conflit de modification explicite.** Un échec `editconflict` lors de la
+  publication affiche désormais un message dédié invitant à recharger la
+  page cible, plutôt que le message générique précédent.
+* **Bouton « Copier le wikitexte ».** Le bloc « Wikitexte généré » propose
+  désormais un bouton de copie presse-papiers, utilisable même sans avoir
+  chargé de page cible ni en avoir les droits d'édition — utile pour
+  préparer un formulaire à transmettre à quelqu'un d'autre (ex. un
+  administrateur).
+* **Validation en direct du formulaire en construction.** Une zone
+  d'avertissement apparaît sous le wikitexte généré pour signaler, en
+  temps réel : une couleur de bouton invalide (`button-bgcolor=`,
+  `button-border-color=`), un nom de champ dupliqué, ou un champ de
+  popup auquel il manque un nom et/ou un libellé (et qui, de ce fait,
+  n'apparaît pas dans le wikitexte généré). Ces avertissements reflètent
+  exactement les contrôles déjà appliqués côté serveur
+  (`ExtendedInputboxConfig::parseSingleConfig`) ; ils préviennent avant la
+  publication plutôt que de laisser l'auteur découvrir le problème après
+  coup sur la page cible.
+* **Indicateur de statut pendant les appels réseau.** Un petit indicateur
+  textuel (« Chargement… », « Génération de l'aperçu… », « Publication… »)
+  s'affiche désormais à côté du bouton « Charger la page » pendant les
+  appels à l'API.
+
+## Special:Extended-Inputbox
+
+Cette extension fournit aussi une page spéciale **Special:Extended-Inputbox** : une
+interface visuelle pour construire un bloc `<inputbox>` (avec ses champs de
+popup) sans écrire le wikitexte à la main, puis l'insérer directement dans
+une page du wiki.
+
+Déroulé :
+
+1. **Construction** : renseignez les paramètres généraux (`type`, `page`,
+   `buttonlabel`, `preload`, couleurs de bouton, etc.) et ajoutez des champs
+   de popup (`popup-field`) via le bouton « Ajouter un champ ». Les lignes de
+   champs peuvent être réordonnées par glisser-déposer. Le wikitexte
+   correspondant est généré en direct dans le panneau de gauche, sous les
+   onglets « Paramètres généraux » et « Champs de la popup ».
+2. **Chargement de la page cible** : saisissez le titre d'une page du wiki
+   puis cliquez sur « Charger la page ». Le wikitexte actuel de la page
+   s'affiche dans la zone d'édition ; si la page n'existe pas encore, une
+   notification l'indique et elle sera créée à la publication.
+3. **Insertion** : placez le curseur à l'endroit souhaité dans la zone
+   d'édition puis cliquez sur « Insérer ici » pour y injecter le bloc
+   `<inputbox>` généré.
+4. **Prévisualisation et publication** : « Prévisualiser » affiche un rendu
+   de la page via l'API (`action=parse`) ; « Publier » enregistre la page
+   (`action=edit`, avec jeton CSRF) puis redirige vers celle-ci.
+
+L'accès à Special:Extended-Inputbox nécessite le droit `edit` ; les vérifications
+propres à la page cible (protection, blocage, conflit d'édition...) restent
+appliquées par l'API MediaWiki au moment de la publication et sont signalées
+dans l'interface.
 
 ## Performances et fonctionnement
 

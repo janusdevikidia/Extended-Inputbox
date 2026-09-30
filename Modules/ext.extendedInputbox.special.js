@@ -1,0 +1,1074 @@
+// <nowiki>
+( function ( $, mw ) {
+	'use strict';
+
+	/**
+	 * Special:Extended-Inputbox 
+	 *
+	 * Workflow :
+	 *  1) Construction visuelle d'un bloc <inputbox> (paramètres généraux +
+	 *     champs de popup-field), avec génération live du wikitexte.
+	 *  2) Chargement du wikitexte d'une page cible via l'API (action=query).
+	 *  3) Insertion du wikitexte généré à la position du curseur dans la
+	 *     zone d'édition de la page cible.
+	 *  4) Prévisualisation (action=parse) et publication (action=edit avec
+	 *     jeton CSRF), puis redirection vers la page cible.
+	 */
+
+	var api = new mw.Api();
+
+	// État du formulaire en cours de construction (étape 1).
+	var state = {
+		general: {
+			type: '',
+			page: '',
+			prefix: '',
+			defaultVal: '',
+			buttonlabel: '',
+			preload: '',
+			preloadParams: '',
+			summary: '',
+			popupTitle: '',
+			popupText: '',
+			requiredMarker: null, // null = non défini ; chaîne (même vide) = surchargé
+			skipEdit: false,
+			hidden: false,
+			bgColor: '',
+			borderColor: ''
+		},
+		fields: []
+	};
+
+	// État de la page cible (étape 2-4).
+	var target = {
+		title: null,
+		exists: false,
+		baseTimestamp: null,
+		canEdit: true
+	};
+
+	var fieldIdCounter = 0;
+
+	function newFieldId() {
+		fieldIdCounter += 1;
+		return 'f' + fieldIdCounter;
+	}
+
+	/**
+	 * Convertit un tableau d'erreurs au format `errorformat=plaintext` de
+	 * l'API MediaWiki en une chaîne lisible unique.
+	 *
+	 * @param {Array|undefined} errArray
+	 * @return {string}
+	 */
+	function errorsToText( errArray ) {
+		if ( !Array.isArray( errArray ) || !errArray.length ) {
+			return '';
+		}
+		return errArray.map( function ( e ) {
+			if ( typeof e === 'string' ) { return e; }
+			return ( e && ( e.text || e.html || e.message || e.code ) ) || '';
+		} ).filter( Boolean ).join( ' ' );
+	}
+
+	/**
+	 * Extrait un message d'erreur lisible d'un échec mw.Api.
+	 */
+	function extractApiError( code, data ) {
+		var fromErrors = data && errorsToText( data.errors );
+		if ( fromErrors ) {
+			return fromErrors;
+		}
+		if ( data && data.error && data.error.info ) {
+			return data.error.info;
+		}
+		if ( data && data.exception ) {
+			return data.exception;
+		}
+		return code || 'unknown-error';
+	}
+
+	function isValidCssColor( val ) {
+		return typeof CSS !== 'undefined' && CSS.supports( 'color', ( val || '' ).trim() );
+	}
+
+	function getValidationWarnings() {
+		var warnings = [];
+		var seenNames = {};
+		var invalidFieldIds = {};
+
+		state.fields.forEach( function ( field, idx ) {
+			if ( [ field.name, field.label, field.options, field.showIf ].some( function ( v ) { return ( v || '' ).indexOf( '|' ) !== -1; } ) ) {
+				warnings.push( mw.msg( 'extendedinputbox-special-warning-pipe-in-field', idx + 1 ) );
+				invalidFieldIds[ field.id ] = true;
+			}
+			if ( !field.name || !field.label ) {
+				warnings.push( mw.msg( 'extendedinputbox-special-warning-incomplete-field', idx + 1 ) );
+				invalidFieldIds[ field.id ] = true;
+				return;
+			}
+			if ( Object.prototype.hasOwnProperty.call( seenNames, field.name ) ) {
+				warnings.push( mw.msg( 'extendedinputbox-error-duplicate-field', field.name ) );
+				invalidFieldIds[ field.id ] = true;
+				invalidFieldIds[ seenNames[ field.name ] ] = true;
+			} else {
+				seenNames[ field.name ] = field.id;
+			}
+		} );
+
+		if ( state.general.bgColor && !isValidCssColor( state.general.bgColor ) ) {
+			warnings.push( mw.msg( 'extendedinputbox-error-invalid-bgcolor' ) );
+		}
+		if ( state.general.borderColor && !isValidCssColor( state.general.borderColor ) ) {
+			warnings.push( mw.msg( 'extendedinputbox-error-invalid-bordercolor' ) );
+		}
+
+		return { warnings: warnings, invalidFieldIds: invalidFieldIds };
+	}
+
+	// ---------------------------------------------------------------------
+	// Génération du wikitexte <inputbox>
+	// ---------------------------------------------------------------------
+
+	function sanitizeLineValue( val ) {
+		return ( val || '' ).replace( /[\r\n]+/g, ' ' ).trim();
+	}
+
+	function buildFieldLine( field ) {
+		var parts = [
+			sanitizeLineValue( field.name ),
+			field.type,
+			sanitizeLineValue( field.label ),
+			sanitizeLineValue( field.options ),
+			sanitizeLineValue( field.showIf ),
+			field.required ? 'yes' : ''
+		];
+		while ( parts.length > 3 && parts[ parts.length - 1 ] === '' ) {
+			parts.pop();
+		}
+		return 'popup-field=' + parts.join( '|' );
+	}
+
+	function generateWikitext() {
+		var g = state.general;
+		var lines = [];
+
+		function pushIf( key, value ) {
+			if ( value !== undefined && value !== null && value !== '' ) {
+				lines.push( key + '=' + sanitizeLineValue( value ) );
+			}
+		}
+
+		lines.push( '<inputbox>' );
+		pushIf( 'type', g.type );
+		pushIf( 'page', g.page );
+		pushIf( 'prefix', g.prefix );
+		pushIf( 'default', g.defaultVal );
+		pushIf( 'buttonlabel', g.buttonlabel );
+		pushIf( 'preload', g.preload );
+		pushIf( 'preload-params', g.preloadParams );
+		pushIf( 'summary', g.summary );
+		if ( g.hidden ) {
+			lines.push( 'hidden=yes' );
+		}
+		pushIf( 'popup-title', g.popupTitle );
+		pushIf( 'popup-text', g.popupText );
+		if ( g.requiredMarker !== null ) {
+			lines.push( 'required-marker=' + sanitizeLineValue( g.requiredMarker ) );
+		}
+		if ( g.skipEdit ) {
+			lines.push( 'skip-edit=yes' );
+		}
+		pushIf( 'button-bgcolor', g.bgColor );
+		pushIf( 'button-border-color', g.borderColor );
+
+		state.fields.forEach( function ( field ) {
+			if ( !field.name || !field.label ) {
+				return;
+			}
+			lines.push( buildFieldLine( field ) );
+		} );
+
+		lines.push( '</inputbox>' );
+		return lines.join( '\n' );
+	}
+
+	// ---------------------------------------------------------------------
+	// UI - Panneau "Construction du formulaire"
+	// ---------------------------------------------------------------------
+
+	var FIELD_TYPES = [ 'text', 'textarea', 'select', 'radio', 'checkbox' ];
+	var $generatedTextarea;
+	var $validationBox;
+	var fieldRows = {};
+
+	function refreshGeneratedWikitext() {
+		if ( $generatedTextarea ) { $generatedTextarea.val( generateWikitext() );
+		}
+		refreshValidationBox();
+	}
+
+	function applyFieldRowHighlighting( invalidFieldIds ) {
+		Object.keys( fieldRows ).forEach( function ( id ) {
+			fieldRows[ id ].toggleClass( 'eib-sp-field-row-invalid', !!invalidFieldIds[ id ] );
+		} );
+	}
+
+	function refreshValidationBox() {
+		if ( !$validationBox ) {
+			return;
+		}
+		var result = getValidationWarnings();
+		$validationBox.empty().toggleClass( 'eib-sp-validation-hidden', !result.warnings.length );
+		result.warnings.forEach( function ( msg ) {
+			$validationBox.append( $( '<div>' ).addClass( 'eib-sp-validation-item' ).text( msg ) );
+		} );
+		applyFieldRowHighlighting( result.invalidFieldIds );
+	}
+
+	function buildGeneralPanel( skipHeading ) {
+		var g = state.general;
+
+		var typeDropdown = new OO.ui.DropdownInputWidget( {
+			options: [
+				{ data: '', label: mw.msg( 'extendedinputbox-special-type-none' ) },
+				{ data: 'search', label: mw.msg( 'extendedinputbox-special-type-search' ) },
+				{ data: 'create', label: mw.msg( 'extendedinputbox-special-type-create' ) },
+				{ data: 'comment', label: mw.msg( 'extendedinputbox-special-type-comment' ) },
+				{ data: 'move', label: mw.msg( 'extendedinputbox-special-type-move' ) }
+			],
+			value: g.type
+		} ).on( 'change', function ( val ) {
+			g.type = val;
+			refreshGeneratedWikitext();
+		} );
+
+		function textField( key, msgKey, multiline ) {
+			var Ctor = multiline ? OO.ui.MultilineTextInputWidget : OO.ui.TextInputWidget;
+			var widget = new Ctor( { value: g[ key ], autosize: !!multiline } );
+			widget.on( 'change', function ( val ) {
+				g[ key ] = val;
+				refreshGeneratedWikitext();
+			} );
+			return new OO.ui.FieldLayout( widget, {
+				label: mw.msg( msgKey ),
+				align: 'top'
+			} );
+		}
+
+		var skipEditCheckbox = new OO.ui.CheckboxInputWidget( { selected: g.skipEdit } )
+			.on( 'change', function ( checked ) {
+				g.skipEdit = checked;
+				refreshGeneratedWikitext();
+			} );
+
+		var hiddenCheckbox = new OO.ui.CheckboxInputWidget( { selected: g.hidden } )
+			.on( 'change', function ( checked ) {
+				g.hidden = checked;
+				refreshGeneratedWikitext();
+			} );
+
+		var hideMarkerCheckbox = new OO.ui.CheckboxInputWidget( { selected: false } );
+		var markerInput = new OO.ui.TextInputWidget( { value: '', placeholder: mw.msg( 'extendedinputbox-special-field-requiredmarker-placeholder' ) } )
+			.on( 'change', function ( val ) {
+				g.requiredMarker = hideMarkerCheckbox.isSelected() ? '' : ( val || null );
+				refreshGeneratedWikitext();
+			} );
+		hideMarkerCheckbox.on( 'change', function ( checked ) {
+			markerInput.setDisabled( checked );
+			g.requiredMarker = checked ? '' : ( markerInput.getValue() || null );
+			refreshGeneratedWikitext();
+		} );
+
+		var $grid = $( '<div>' ).addClass( 'eib-sp-general-grid' );
+		[
+			new OO.ui.FieldLayout( typeDropdown, { label: mw.msg( 'extendedinputbox-special-field-type' ), align: 'top' } ),
+			textField( 'page', 'extendedinputbox-special-field-page' ),
+			textField( 'prefix', 'extendedinputbox-special-field-prefix' ),
+			textField( 'defaultVal', 'extendedinputbox-special-field-default' ),
+			textField( 'buttonlabel', 'extendedinputbox-special-field-buttonlabel' ),
+			textField( 'preload', 'extendedinputbox-special-field-preload' ),
+			textField( 'preloadParams', 'extendedinputbox-special-field-preloadparams' ),
+			textField( 'summary', 'extendedinputbox-special-field-summary' ),
+			textField( 'popupTitle', 'extendedinputbox-special-field-popuptitle' ),
+			textField( 'popupText', 'extendedinputbox-special-field-popuptext', true )
+		].forEach( function ( layout ) {
+			$grid.append( layout.$element );
+		} );
+
+		var $advancedGrid = $( '<div>' ).addClass( 'eib-sp-general-grid' );
+		[
+			textField( 'bgColor', 'extendedinputbox-special-field-bgcolor' ),
+			textField( 'borderColor', 'extendedinputbox-special-field-bordercolor' )
+		].forEach( function ( layout ) {
+			$advancedGrid.append( layout.$element );
+		} );
+
+		$advancedGrid.append(
+			new OO.ui.FieldLayout( hiddenCheckbox, {
+				label: mw.msg( 'extendedinputbox-special-field-hidden' ),
+				align: 'inline'
+			} ).$element
+		);
+
+		$advancedGrid.append(
+			new OO.ui.FieldLayout( skipEditCheckbox, {
+				label: mw.msg( 'extendedinputbox-special-field-skipedit' ),
+				align: 'inline'
+			} ).$element
+		);
+
+		var $markerRow = $( '<div>' ).addClass( 'eib-sp-marker-row' ).append(
+			new OO.ui.FieldLayout( markerInput, {
+				label: mw.msg( 'extendedinputbox-special-field-requiredmarker' ),
+				align: 'top'
+			} ).$element,
+			$( '<label>' ).append( hideMarkerCheckbox.$element, ' ' + mw.msg( 'extendedinputbox-special-field-hidemarker' ) )
+		);
+		$advancedGrid.append($markerRow );
+
+		var $advancedDetails = $( '<details>' ).addClass( 'eib-sp-advanced' ).append(
+			$( '<summary>' ).text( mw.msg( 'extendedinputbox-special-advanced-toggle' ) ), $advancedGrid
+		);
+
+		var $panel = $( '<div>' );
+		if ( !skipHeading ) {
+			$panel.append( $( '<h3>' ).text( mw.msg( 'extendedinputbox-special-section-general' ) ) );
+		}
+		return $panel.append( $grid, $advancedDetails );
+	}
+
+	function buildFieldRow( field, $list ) {
+		var $row = $( '<div>' )
+			.addClass( 'eib-sp-field-row' )
+			.attr( { draggable: 'false', 'data-field-id': field.id } );
+
+		var $handle = $( '<span>' ).addClass( 'eib-sp-drag-handle' ).text( '⠿' )
+			.attr( 'title', mw.msg( 'extendedinputbox-special-drag-hint' ) );
+
+		var nameInput = new OO.ui.TextInputWidget( { value: field.name, placeholder: mw.msg( 'extendedinputbox-special-field-row-name' ) } )
+			.on( 'change', function ( val ) { field.name = val; refreshGeneratedWikitext(); } );
+
+		var typeDropdown = new OO.ui.DropdownInputWidget( {
+			options: FIELD_TYPES.map( function ( t ) {
+				return { data: t, label: mw.msg( 'extendedinputbox-special-field-type-' + t ) };
+			} ),
+			value: field.type
+		} ).on( 'change', function ( val ) { field.type = val; refreshGeneratedWikitext(); } );
+
+		var labelInput = new OO.ui.TextInputWidget( { value: field.label, placeholder: mw.msg( 'extendedinputbox-special-field-row-label' ) } )
+			.on( 'change', function ( val ) { field.label = val; refreshGeneratedWikitext(); } );
+
+		var optionsInput = new OO.ui.TextInputWidget( { value: field.options, placeholder: mw.msg( 'extendedinputbox-special-field-row-options' ) } )
+			.on( 'change', function ( val ) { field.options = val; refreshGeneratedWikitext(); } );
+
+		var showIfInput = new OO.ui.TextInputWidget( { value: field.showIf, placeholder: mw.msg( 'extendedinputbox-special-field-row-showif' ) } )
+			.on( 'change', function ( val ) { field.showIf = val; refreshGeneratedWikitext(); } );
+
+		var requiredCheckbox = new OO.ui.CheckboxInputWidget( { selected: field.required } )
+			.on( 'change', function ( checked ) { field.required = checked; refreshGeneratedWikitext(); } );
+
+		var removeBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-special-btn-removefield' ),
+			flags: [ 'destructive' ],
+			framed: false
+		} ).on( 'click', function () {
+			state.fields = state.fields.filter( function ( f ) { return f.id !== field.id; } );
+			renderFieldsList( $list );
+		} );
+
+		var upBtn = new OO.ui.ButtonWidget( { label: mw.msg( 'extendedinputbox-special-btn-moveup' ), framed: false } )
+			.on( 'click', function () { moveField( field.id, -1, $list ); } );
+		var downBtn = new OO.ui.ButtonWidget( { label: mw.msg( 'extendedinputbox-special-btn-movedown' ), framed: false } )
+			.on( 'click', function () { moveField( field.id, 1, $list ); } );
+
+		$row.append($handle,
+			$( '<div>' ).addClass( 'eib-sp-field-widget-small' ).append( nameInput.$element ),
+			$( '<div>' ).addClass( 'eib-sp-field-widget-small' ).append( typeDropdown.$element ),
+			$( '<div>' ).addClass( 'eib-sp-field-widget' ).append( labelInput.$element ),
+			$( '<div>' ).addClass( 'eib-sp-field-widget' ).append( optionsInput.$element ),
+			$( '<div>' ).addClass( 'eib-sp-field-widget' ).append( showIfInput.$element ),
+			$( '<label>' ).append( requiredCheckbox.$element, ' ' + mw.msg( 'extendedinputbox-special-field-row-required' ) ),
+			$( '<div>' ).addClass( 'eib-sp-field-actions' ).append( upBtn.$element, downBtn.$element, removeBtn.$element )
+		);
+
+		// Seule la poignée active le glisser-déposer (sinon impossible de
+		// sélectionner du texte dans les champs sous Firefox).
+		$handle.on( 'mousedown', function () { $row.attr( 'draggable', 'true' ); } )
+			.on( 'mouseup', function () { $row.attr( 'draggable', 'false' ); } );
+
+		bindDragEvents( $row, $list );
+
+		fieldRows[ field.id ] = $row;
+
+		return $row;
+	}
+
+	function bindDragEvents( $row, $list ) {
+		var dragSrcId = null;
+
+		$row.on( 'dragstart', function ( e ) {
+			dragSrcId = $row.attr( 'data-field-id' );
+			e.originalEvent.dataTransfer.effectAllowed = 'move';
+			e.originalEvent.dataTransfer.setData( 'text/plain', dragSrcId );
+			$row.addClass( 'eib-sp-dragging' );
+		} );
+		$row.on( 'dragend', function () {
+			$row.attr( 'draggable', 'false' ).removeClass( 'eib-sp-dragging' );$list.find( '.eib-sp-field-row' ).removeClass( 'eib-sp-dragover' );
+		} );
+		$row.on( 'dragover', function ( e ) {
+			e.preventDefault();
+			e.originalEvent.dataTransfer.dropEffect = 'move';
+			$row.addClass( 'eib-sp-dragover' );
+		} );
+		$row.on( 'dragleave', function () { $row.removeClass( 'eib-sp-dragover' );
+		} );
+		$row.on( 'drop', function ( e ) {
+			e.preventDefault();
+			var targetId = $row.attr( 'data-field-id' );
+			var srcId = e.originalEvent.dataTransfer.getData( 'text/plain' );
+			if ( srcId && srcId !== targetId ) {
+				reorderFields( srcId, targetId );
+				renderFieldsList( $list );
+			}
+		} );
+	}
+
+	function reorderFields( srcId, targetId ) {
+		var srcIndex = state.fields.findIndex( function ( f ) { return f.id === srcId; } );
+		var targetIndex = state.fields.findIndex( function ( f ) { return f.id === targetId; } );
+		if ( srcIndex === -1 || targetIndex === -1 ) {
+			return;
+		}
+		var moved = state.fields.splice( srcIndex, 1 )[ 0 ];
+		state.fields.splice( targetIndex, 0, moved );
+	}
+
+	function moveField( id, delta, $list ) {
+		var index = state.fields.findIndex( function ( f ) { return f.id === id; } );
+		var newIndex = index + delta;
+		if ( index === -1 || newIndex < 0 || newIndex >= state.fields.length ) {
+			return;
+		}
+		var moved = state.fields.splice( index, 1 )[ 0 ];
+		state.fields.splice( newIndex, 0, moved );
+		renderFieldsList( $list );
+	}
+
+	function renderFieldsList( $list ) { $list.empty();
+		fieldRows = {};
+		if ( !state.fields.length ) {
+			$list.append( $( '<div>' ).addClass( 'eib-sp-empty-fields' ).text( mw.msg( 'extendedinputbox-special-no-fields' ) ) );
+		}
+		state.fields.forEach( function ( field ) {
+			$list.append( buildFieldRow( field, $list ) );
+		} );
+		refreshGeneratedWikitext();
+	}
+
+	function buildFieldsPanel( skipHeading ) {
+		var $list = $( '<div>' ).addClass( 'eib-sp-fields-list' );
+
+		var addBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-special-btn-addfield' ),
+			icon: 'add',
+			flags: [ 'progressive' ]
+		} ).on( 'click', function () {
+			state.fields.push( {
+				id: newFieldId(),
+				name: '',
+				type: 'text',
+				label: '',
+				options: '',
+				showIf: '',
+				required: false
+			} );
+			renderFieldsList( $list );
+		} );
+
+		renderFieldsList( $list );
+
+		var $panel = $( '<div>' );
+		if ( !skipHeading ) {
+			$panel.append( $( '<h3>' ).text( mw.msg( 'extendedinputbox-special-section-fields' ) ) );
+		}
+		return $panel.append( $list, addBtn.$element );
+	}
+
+	function copyToClipboard( text ) {
+		var deferred = $.Deferred();
+
+		if ( navigator.clipboard && window.isSecureContext ) {
+			navigator.clipboard.writeText( text ).then( deferred.resolve, function () {
+				deferred.reject();
+			} );
+			return deferred.promise();
+		}
+
+		var $tmp = $( '<textarea>' )
+			.val( text )
+			.css( { position: 'fixed', top: '-1000px', left: '-1000px', opacity: 0 } )
+			.appendTo( 'body' );
+		$tmp[ 0 ].focus();$tmp[ 0 ].select();
+		try {
+			if ( document.execCommand( 'copy' ) ) {
+				deferred.resolve();
+			} else {
+				deferred.reject();
+			}
+		} catch ( e ) {
+			deferred.reject();
+		}
+		$tmp.remove();
+
+		return deferred.promise();
+	}
+
+	function buildPreviewPanel() {
+		$generatedTextarea = $( '<textarea>' )
+			.addClass( 'eib-sp-generated-wikitext' )
+			.attr( 'readonly', true );
+
+		$validationBox = $( '<div>' ).addClass( 'eib-sp-validation eib-sp-validation-hidden' );
+
+		var $copyStatus = $( '<span>' ).addClass( 'eib-sp-status' );
+
+		var copyBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-special-btn-copy' ),
+			icon: 'copy'
+		} ).on( 'click', function () {
+			copyToClipboard( generateWikitext() ).done( function () {
+				$copyStatus.removeClass( 'eib-sp-status-error' ).text( mw.msg( 'extendedinputbox-special-notice-copied' ) );
+			} ).fail( function () {
+				$copyStatus.addClass( 'eib-sp-status-error' ).text( mw.msg( 'extendedinputbox-special-error-copy-failed' ) );
+			} );
+			setTimeout( function () {
+				$copyStatus.text( '' );
+			}, 4000 );
+		} );
+
+		var previewPopupBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-special-btn-previewpopup' ),
+			icon: 'eye'
+		} ).on( 'click', previewPopup );
+
+		refreshGeneratedWikitext();
+
+		return $( '<div>' ).append( $( '<h3>' ).text( mw.msg( 'extendedinputbox-special-generated-label' ) ),
+			$generatedTextarea, $validationBox,
+			$( '<div>' ).addClass( 'eib-sp-toolbar' ).append( copyBtn.$element, previewPopupBtn.$element, $copyStatus )
+		);
+	}
+
+	// ---------------------------------------------------------------------
+	// Aperçu de la popup (Fenêtre modale)
+	// ---------------------------------------------------------------------
+
+	var previewWindowManager = null;
+	function getPreviewWindowManager() {
+		if ( !previewWindowManager ) {
+			previewWindowManager = new OO.ui.WindowManager();
+			$( 'body' ).append( previewWindowManager.$element );
+		}
+		return previewWindowManager;
+	}
+
+	function buildPreviewConfigFromState() {
+		return {
+			title: state.general.popupTitle || null,
+			text: state.general.popupText || null,
+			fields: state.fields.filter( function ( f ) { return f.name && f.label; } ),
+			requiredMarker: state.general.requiredMarker
+		};
+	}
+
+	function openPreviewDialog( config ) {
+		function PreviewDialog( cfg ) {
+			PreviewDialog.super.call( this, cfg );
+		}
+		OO.inheritClass( PreviewDialog, OO.ui.Dialog );
+		PreviewDialog.static.name = 'eibSpecialPreviewDialog';
+		PreviewDialog.static.title = config.title || mw.msg( 'extendedinputbox-default-title' );
+		PreviewDialog.static.actions = [
+			{ action: 'cancel', label: mw.msg( 'extendedinputbox-btn-cancel' ), flags: [ 'safe', 'close' ] }
+		];
+
+		PreviewDialog.prototype.initialize = function () {
+			PreviewDialog.super.prototype.initialize.apply( this, arguments );
+			var widgets = {};
+			var fieldLayouts = {};
+			this.content = new OO.ui.PanelLayout( { padded: true, expanded: false } );
+
+			this.content.$element.append( $( '<p>' ).addClass( 'eib-sp-preview-banner' )
+					.text( mw.msg( 'extendedinputbox-special-preview-popup-banner' ) )
+			);
+
+			if ( config.text ) {
+				this.content.$element.append( $( '<p>' ).text( config.text ) );
+			}
+
+			config.fields.forEach( function ( field ) {
+				var opts;
+				var widget;
+				if ( field.type === 'select' ) {
+					opts = ( field.options || '' ).split( ',' ).map( function ( o ) {
+						var v = o.trim(); return { data: v, label: v };
+					} );
+					widget = new OO.ui.DropdownInputWidget( { options: opts } );
+				} else if ( field.type === 'radio' ) {
+					opts = ( field.options || '' ).split( ',' ).map( function ( o ) {
+						var v = o.trim(); return { data: v, label: v };
+					} );
+					widget = new OO.ui.RadioSelectInputWidget( { options: opts } );
+				} else if ( field.type === 'checkbox' || field.type === 'checkboxes' ) {
+					opts = field.options ? field.options.split( ',' ).map( function ( o ) {
+						var v = o.trim(); return { data: v, label: v };
+					} ) : [];
+					widget = new OO.ui.CheckboxMultiselectInputWidget( { options: opts } );
+				} else if ( field.type === 'textarea' ) {
+					widget = new OO.ui.MultilineTextInputWidget( { value: field.options || '' } );
+				} else {
+					widget = new OO.ui.TextInputWidget( { value: field.options || '' } );
+				}
+
+				if ( field.required && typeof widget.setRequired === 'function' ) {
+					widget.setRequired( true );
+				}
+
+				var requiredMarker = ( config.requiredMarker === null || config.requiredMarker === undefined ) ?
+					mw.msg( 'extendedinputbox-required-marker' ) : config.requiredMarker;
+				var layout = new OO.ui.FieldLayout( widget, {
+					label: field.required && requiredMarker ? field.label + ' ' + requiredMarker : field.label,
+					align: 'top'
+				} );
+
+				widgets[ field.name ] = widget;
+				fieldLayouts[ field.name ] = layout;
+				this.content.$element.append( layout.$element );
+			}, this );
+
+			function checkSingleCondition( condStr ) {
+				var eqIdx = condStr.indexOf( '=' );
+				if ( eqIdx === -1 ) { return false; }
+				var parentName = condStr.substring( 0, eqIdx ).trim();
+				var targetVal = condStr.substring( eqIdx + 1 ).trim();
+				var parentLayout = fieldLayouts[ parentName ];
+				var parentWidget = widgets[ parentName ];
+				if ( !parentLayout || !parentLayout.isVisible() || !parentWidget ) { return false; }
+				var parentVal = parentWidget.getValue();
+				return Array.isArray( parentVal ) ? parentVal.indexOf( targetVal ) !== -1 : parentVal === targetVal;
+			}
+			function evaluateShowIf( rawCond ) {
+				return rawCond.split( ',' ).some( function ( branch ) {
+					return branch.split( '&' ).every( function ( cond ) {
+						return checkSingleCondition( cond.trim() );
+					} );
+				} );
+			}
+			function updateAllVisibilities() {
+				var changed = true;
+				var maxPasses = 10;
+				while ( changed && maxPasses > 0 ) {
+					changed = false;
+					maxPasses--;
+					config.fields.forEach( function ( field ) {
+						if ( !field.showIf ) { return; }
+						var showIfStr = field.showIf.trim();
+						if ( showIfStr.indexOf( 'show-if:' ) !== 0 ) { return; }
+						var rawCond = showIfStr.substring( 8 ).trim();
+						var shouldShow = evaluateShowIf( rawCond );
+						var currentLayout = fieldLayouts[ field.name ];
+						if ( currentLayout && currentLayout.isVisible() !== shouldShow ) {
+							currentLayout.toggle( shouldShow );
+							changed = true;
+						}
+					} );
+				}
+			}
+			Object.keys( widgets ).forEach( function ( name ) {
+				widgets[ name ].on( 'change', updateAllVisibilities );
+			} );
+			updateAllVisibilities();
+
+			this.$body.append( this.content.$element );
+		};
+
+		// Permet à OOUI de fermer la boîte de dialogue au clic sur le bouton "Annuler"
+		PreviewDialog.prototype.getActionProcess = function ( action ) {
+			var dialog = this;
+			if ( action ) {
+				return new OO.ui.Process( function () {
+					dialog.close( { action: action } );
+				} );
+			}
+			return PreviewDialog.super.prototype.getActionProcess.call( this, action );
+		};
+
+		PreviewDialog.prototype.getBodyHeight = function () {
+			return this.content.$element.outerHeight( true );
+		};
+
+		var windowManager = getPreviewWindowManager();
+		var dialog = new PreviewDialog( { size: 'medium' } );
+		windowManager.addWindows( [ dialog ] );
+		var openedWindow = windowManager.openWindow( dialog );
+		openedWindow.closed.then( function () {
+			windowManager.removeWindows( [ PreviewDialog.static.name ] );
+		} );
+	}
+
+	function previewPopup() {
+		openPreviewDialog( buildPreviewConfigFromState() );
+	}
+
+	// ---------------------------------------------------------------------
+	// UI - Panneau "Page cible" (étapes 2 à 4)
+	// ---------------------------------------------------------------------
+
+	var $targetTextarea;
+	var $noticeArea;
+	var $previewBox;
+	var $statusSpan;
+
+	function showNotice( message, level ) {
+		if ( !$noticeArea ) {
+			return;
+		}
+		if ( level === true ) {
+			level = 'error';
+		} else if ( level === false || level === undefined ) {
+			level = 'success';
+		}
+		$noticeArea.empty();
+		var widget = new OO.ui.MessageWidget( {
+			type: level,
+			label: message
+		} );
+		$noticeArea.append( widget.$element );
+	}
+
+	function clearNotice() {
+		if ( $noticeArea ) {
+			$noticeArea.empty();
+		}
+	}
+
+	function setStatus( text, isError ) {
+		if ( !$statusSpan ) {
+			return;
+		}$statusSpan.text( text || '' ).toggleClass( 'eib-sp-status-error', !!isError );
+	}
+
+	function loadPage() {
+		var title = targetTitleWidget.getValue().trim();
+		if ( !title ) {
+			showNotice( mw.msg( 'extendedinputbox-special-error-notitle' ), true );
+			return;
+		}
+
+		clearNotice();
+		setStatus( mw.msg( 'extendedinputbox-special-status-loading' ) );
+		loadBtn.setDisabled( true );
+
+		var titleObj = mw.Title.newFromText( title );
+		var targetTitle = titleObj ? titleObj.getPrefixedText() : title;
+
+		api.get( {
+			action: 'query',
+			prop: 'revisions|info',
+			rvprop: 'content|timestamp',
+			rvslots: 'main',
+			intestactions: 'edit|create',
+			titles: targetTitle,
+			redirects: 1,
+			errorformat: 'plaintext',
+			formatversion: 2
+		} ).done( function ( res ) {
+			var page = res && res.query && res.query.pages && res.query.pages[ 0 ];
+			if ( !page ) {
+				showNotice( mw.msg( 'extendedinputbox-special-error-load', targetTitle ), true );
+				return;
+			}
+
+			target.title = page.title;
+			target.exists = !page.missing;
+			target.baseTimestamp = ( !page.missing && page.revisions && page.revisions[ 0 ] ) ?
+				page.revisions[ 0 ].timestamp : null;
+
+			var actions = page.actions || {};
+			if ( page.missing ) {
+				target.canEdit = actions.create === true;
+			} else {
+				target.canEdit = actions.edit === true;
+			}
+
+			if ( page.missing ) {
+				$targetTextarea.val( '' );
+				showNotice( mw.msg( 'extendedinputbox-special-notice-newpage' ), 'notice' );
+			} else {
+				var content = page.revisions && page.revisions[ 0 ] && page.revisions[ 0 ].slots &&
+					page.revisions[ 0 ].slots.main ? page.revisions[ 0 ].slots.main.content : '';
+				$targetTextarea.val( content );
+			}
+
+			if ( !target.canEdit ) {
+				var actionErr = page.missing ? actions.create : actions.edit;
+				var detail = Array.isArray( actionErr ) ? errorsToText( actionErr ) : '';
+				showNotice(
+					detail ?
+						mw.msg( 'extendedinputbox-special-error-noedit-detailed', detail ) :
+						mw.msg( 'extendedinputbox-special-error-noedit' ),
+					true
+				);
+			} else if ( !page.missing ) {
+				showNotice( mw.msg( 'extendedinputbox-special-notice-loaded' ), false );
+			}
+
+			$previewBox.empty();
+		} ).fail( function ( code, data ) {
+			showNotice( mw.msg( 'extendedinputbox-special-error-load', extractApiError( code, data ) ), true );
+		} ).always( function () {
+			loadBtn.setDisabled( false );
+			setStatus( '' );
+		} );
+	}
+
+	function insertHere() {
+		if ( target.title === null ) {
+			showNotice( mw.msg( 'extendedinputbox-special-error-noinsert' ), 'notice' );
+			return;
+		}
+
+		var ta = $targetTextarea[ 0 ];
+		var insertion = generateWikitext();
+		var start = typeof ta.selectionStart === 'number' ? ta.selectionStart : ta.value.length;
+		var end = typeof ta.selectionEnd === 'number' ? ta.selectionEnd : ta.value.length;
+		var value = ta.value;
+
+		var before = value.substring( 0, start );
+		var after = value.substring( end );
+		var prefix = ( before.length && !/\n$/.test( before ) ) ? '\n' : '';
+		var suffix = ( after.length && !/^\n/.test( after ) ) ? '\n' : '';
+		var toInsert = prefix + insertion + suffix;
+
+		ta.value = before + toInsert + after;
+
+		var newPos = ( before + toInsert ).length;
+		ta.focus();
+		ta.setSelectionRange( newPos, newPos );
+
+		showNotice( mw.msg( 'extendedinputbox-special-notice-inserted' ), false );
+	}
+
+	function previewHere() {
+		if ( target.title === null ) {
+			showNotice( mw.msg( 'extendedinputbox-special-error-noinsert' ), 'notice' );
+			return;
+		}
+
+		clearNotice();
+		setStatus( mw.msg( 'extendedinputbox-special-status-previewing' ) );
+		previewBtn.setDisabled( true );
+		$previewBox.empty().append( $( '<em>' ).text( mw.msg( 'extendedinputbox-special-preview-loading' ) ) );
+
+		api.post( {
+			action: 'parse',
+			title: target.title,
+			text: $targetTextarea.val(),
+			pst: 1,
+			disablelimitreport: 1,
+			prop: 'text',
+			errorformat: 'plaintext',
+			formatversion: 2
+		} ).done( function ( res ) {
+			var html = res && res.parse && res.parse.text;
+			$previewBox.empty();
+			if ( html ) {
+				$previewBox.append($.parseHTML( html ) );
+			}
+		} ).fail( function ( code, data ) {
+			$previewBox.empty();
+			showNotice( mw.msg( 'extendedinputbox-special-error-preview', extractApiError( code, data ) ), true );
+		} ).always( function () {
+			previewBtn.setDisabled( false );
+			setStatus( '' );
+		} );
+	}
+
+	function doPublish() {
+		var editData = {
+			action: 'edit',
+			title: target.title,
+			text: $targetTextarea.val(),
+			summary: state.general.summary || mw.msg( 'extendedinputbox-special-summary-default' ),
+			errorformat: 'plaintext'
+		};
+		if ( target.baseTimestamp ) {
+			editData.basetimestamp = target.baseTimestamp;
+		}
+		if ( !target.exists ) {
+			// Ne pas écraser une page créée par quelqu'un d'autre entre-temps.
+			editData.createonly = 1;
+		}
+
+		publishBtn.setDisabled( true );
+		setStatus( mw.msg( 'extendedinputbox-special-status-publishing' ) );
+
+		api.postWithToken( 'csrf', editData ).done( function ( res ) {
+			if ( res && res.edit && res.edit.result === 'Success' ) {
+				showNotice( mw.msg( 'extendedinputbox-special-notice-published' ), false );
+				setTimeout( function () {
+					window.location.href = mw.util.getUrl( target.title );
+				}, 800 );
+			} else {
+				showNotice( mw.msg( 'extendedinputbox-special-error-publish', 'unknown' ), true );
+				publishBtn.setDisabled( false );
+			}
+		} ).fail( function ( code, data ) {
+			var msg;
+			var detail = extractApiError( code, data );
+			if ( code === 'articleexists' ) {
+				msg = mw.msg( 'extendedinputbox-error-page-exists', target.title );
+			} else if ( code === 'editconflict' ) {
+				msg = mw.msg( 'extendedinputbox-special-error-editconflict' );
+			} else if ( code === 'permissiondenied' || code === 'protectedpage' || code === 'cantcreate' ||
+				code === 'blocked' || code === 'readonly'
+			) {
+				msg = detail && detail !== code ?
+					mw.msg( 'extendedinputbox-special-error-noedit-detailed', detail ) :
+					mw.msg( 'extendedinputbox-special-error-noedit' );
+			} else {
+				msg = mw.msg( 'extendedinputbox-special-error-publish', detail );
+			}
+			showNotice( msg, true );
+			publishBtn.setDisabled( false );
+		} ).always( function () {
+			setStatus( '' );
+		} );
+	}
+
+	function publishPage() {
+		if ( target.title === null ) {
+			showNotice( mw.msg( 'extendedinputbox-special-error-noinsert' ), 'notice' );
+			return;
+		}
+		if ( target.canEdit === false ) {
+			showNotice( mw.msg( 'extendedinputbox-special-error-noedit' ), true );
+			return;
+		}
+
+		clearNotice();
+
+		if ( target.exists ) {
+			OO.ui.confirm( mw.msg( 'extendedinputbox-special-confirm-overwrite' ) ).done( function ( confirmed ) {
+				if ( confirmed ) {
+					doPublish();
+				}
+			} );
+		} else {
+			doPublish();
+		}
+	}
+
+	var targetTitleWidget, loadBtn, previewBtn, publishBtn;
+
+	function buildTargetPanel() {
+		targetTitleWidget = new mw.widgets.TitleInputWidget( {
+			placeholder: mw.msg( 'extendedinputbox-special-field-target-title' ),
+			showMissing: true,
+			value: mw.config.get( 'extendedInputboxSpecialTarget' ) || ''
+		} );
+
+		loadBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-special-btn-load' ),
+			flags: [ 'progressive' ]
+		} ).on( 'click', loadPage );
+
+		$statusSpan = $( '<span>' ).addClass( 'eib-sp-status' );
+
+		var $titleRow = $( '<div>' ).addClass( 'eib-sp-toolbar' ).append(
+			targetTitleWidget.$element,
+			loadBtn.$element, $statusSpan
+		);
+
+		$targetTextarea = $( '<textarea>' ).addClass( 'eib-sp-target-textarea' )
+			.attr( 'placeholder', mw.msg( 'extendedinputbox-special-wikitext-label' ) );
+
+		var insertBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-special-btn-insert' ),
+			icon: 'add',
+			flags: [ 'progressive' ]
+		} ).on( 'click', insertHere );
+
+		previewBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-special-btn-preview' )
+		} ).on( 'click', previewHere );
+
+		publishBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-special-btn-publish' ),
+			flags: [ 'primary', 'progressive' ]
+		} ).on( 'click', publishPage );
+
+		var $actionRow = $( '<div>' ).addClass( 'eib-sp-toolbar' ).append(
+			insertBtn.$element, previewBtn.$element, publishBtn.$element
+		);
+
+		$noticeArea = $( '<div>' ).addClass( 'eib-sp-notice' );
+		$previewBox = $( '<div>' ).addClass( 'eib-sp-preview-box' );
+
+		return $( '<div>' ).append(
+			$( '<h3>' ).text( mw.msg( 'extendedinputbox-special-section-target' ) ), $titleRow,
+			$noticeArea,
+			$targetTextarea, $actionRow,
+			$( '<h4>' ).text( mw.msg( 'extendedinputbox-special-preview-label' ) ), $previewBox
+		);
+	}
+
+	// ---------------------------------------------------------------------
+	// Assemblage
+	// ---------------------------------------------------------------------
+
+	function init() {
+		var $root = $( '#eib-special-root' );
+		if ( !$root.length ) {
+			return;
+		}
+
+		var $intro = $( '<p>' ).text( mw.msg( 'extendedinputbox-special-intro' ) );
+
+		var generalTabPanel = new OO.ui.TabPanelLayout( 'general', {
+			label: mw.msg( 'extendedinputbox-special-section-general' ),
+			expanded: false
+		} );
+		generalTabPanel.$element.addClass( 'eib-sp-tabpanel' ).append( buildGeneralPanel( true ) );
+
+		var fieldsTabPanel = new OO.ui.TabPanelLayout( 'fields', {
+			label: mw.msg( 'extendedinputbox-special-section-fields' ),
+			expanded: false
+		} );
+		fieldsTabPanel.$element.addClass( 'eib-sp-tabpanel' ).append( buildFieldsPanel( true ) );
+
+		var indexLayout = new OO.ui.IndexLayout( { expanded: false, framed: true } );
+		indexLayout.addTabPanels( [ generalTabPanel, fieldsTabPanel ] );
+		indexLayout.setTabPanel( 'general' );
+
+		var $left = $( '<div>' ).addClass( 'eib-sp-column' ).append( $( '<div>' ).addClass( 'eib-sp-panel eib-sp-tabs-panel' ).append( indexLayout.$element ), $( '<div>' ).addClass( 'eib-sp-panel' ).append( buildPreviewPanel() )
+		);
+
+		var $right = $( '<div>' ).addClass( 'eib-sp-column' ).append( $( '<div>' ).addClass( 'eib-sp-panel' ).append( buildTargetPanel() )
+		);
+
+		$root.append(
+			$intro, $( '<div>' ).addClass( 'eib-sp' ).append( $left, $right )
+		);
+
+		var initialTarget = mw.config.get( 'extendedInputboxSpecialTarget' );
+		if ( initialTarget ) {
+			loadPage();
+		}
+	}
+
+	$( init );
+
+}( jQuery, mediaWiki ) );
+// </nowiki>

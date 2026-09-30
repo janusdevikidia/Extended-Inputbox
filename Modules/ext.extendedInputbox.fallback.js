@@ -40,8 +40,9 @@
 	// CET inputbox et tous ceux qui suivent.
 	function stripNonRenderedRegions( wikitext ) {
 		wikitext = wikitext.replace( /<!--[\s\S]*?-->/g, '' );
-		wikitext = wikitext.replace( /<nowiki\s*\/?>[\s\S]*?(?:<\/nowiki>|$)/gi, '' );
-		wikitext = wikitext.replace( /<pre\b[^>]*>[\s\S]*?(?:<\/pre>|$)/gi, '' );
+		wikitext = wikitext.replace( /<nowiki\s*\/>/gi, '' );
+		wikitext = wikitext.replace( /<nowiki\s*>[\s\S]*?(?:<\/nowiki>|$)/gi, '' );
+		wikitext = wikitext.replace( /<(pre|syntaxhighlight|source)\b[^>]*>[\s\S]*?(?:<\/\1>|$)/gi, '' );
 		return wikitext;
 	}
 
@@ -107,6 +108,14 @@
 		if ( !$content.is( '#mw-content-text' ) && !$content.closest( '#mw-content-text' ).length ) {
 			return;
 		}
+		// Aperçu d'édition ou ancienne révision : le wikitexte enregistré ne
+		// correspond pas au HTML affiché, l'appariement serait faux.
+		var action = mw.config.get( 'wgAction' );
+		if ( action === 'edit' || action === 'submit' ||
+			( mw.config.get( 'wgRevisionId' ) && mw.config.get( 'wgRevisionId' ) !== mw.config.get( 'wgCurRevisionId' ) )
+		) {
+			return;
+		}
 		if ( skipInitialServerProcessedContent ) {
 			skipInitialServerProcessedContent = false;
 			return;
@@ -163,17 +172,36 @@
 		} );
 	} );
 
+	var fallbackStyleCounter = 0;
+
+	// Miroir de ExtendedInputboxConfig::getContrastTextColor() : lit la couleur
+	// résolue par le navigateur et choisit texte sombre/clair (YIQ).
+	function contrastColor( bg ) {
+		var el = document.createElement( 'span' );
+		el.style.color = bg;
+		document.body.appendChild( el );
+		var m = getComputedStyle( el ).color.match( /[\d.]+/g );
+		document.body.removeChild( el );
+		if ( !m || m.length < 3 || ( m.length > 3 && parseFloat( m[ 3 ] ) === 0 ) ) {
+			return '#ffffff';
+		}
+		var yiq = ( m[ 0 ] * 299 + m[ 1 ] * 587 + m[ 2 ] * 114 ) / 1000;
+		return yiq >= 150 ? '#202122' : '#ffffff';
+	}
+
 	function applyButtonStyle( $btn, config, index ) {
 		if ( !config.buttonBgColor && !config.buttonBorderColor ) {
 			return;
 		}
 
 		var bg = config.buttonBgColor || '';
-		var textColor = bg ? '#ffffff' : '';
+		var textColor = bg ? contrastColor( bg ) : '';
 		var borderColor = config.buttonBorderColor || 'transparent';
 
-		var btnClass = 'extended-inputbox-btn-fallback-' + index;
-		var styleId = 'extended-inputbox-style-fallback-' + index;
+		// Identifiant unique : l'index repart de 0 à chaque déclenchement du hook.
+		fallbackStyleCounter++;
+		var btnClass = 'extended-inputbox-btn-fallback-' + fallbackStyleCounter;
+		var styleId = 'extended-inputbox-style-fallback-' + fallbackStyleCounter;
 
 		var rules = [];
 		if ( bg ) {

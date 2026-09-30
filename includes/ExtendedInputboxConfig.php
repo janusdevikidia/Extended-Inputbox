@@ -42,8 +42,8 @@ class ExtendedInputboxConfig {
 		'wheat', 'white', 'whitesmoke', 'yellow', 'yellowgreen',
 	];
 
-	private const RE_NUMBER = '/^\d{1,3}(?:\.\d+)?$/';
-	private const RE_PERCENT = '/^\d{1,3}(?:\.\d+)?%$/';
+	private const RE_NUMBER = '/^(?:\d{1,3}(?:\.\d+)?|\.\d+)$/';
+	private const RE_PERCENT = '/^(?:\d{1,3}(?:\.\d+)?|\.\d+)%$/';
 
 	private static function isValidAlpha( $val ) {
 		return ( preg_match( self::RE_NUMBER, $val ) && (float)$val <= 1 ) ||
@@ -110,12 +110,103 @@ class ExtendedInputboxConfig {
 		return true;
 	}
 
+
+	/**
+	 * Syntaxe CSS moderne (sans virgules) : rgb(0 0 0 / 50%), hsl(120deg 100% 50%).
+	 * Aligne le validateur serveur sur CSS.supports() utilisé côté JS.
+	 */
+	private static function isValidModernArgs( $argsStr, $fn ) {
+		if ( strpos( $argsStr, ',' ) !== false ) {
+			return false;
+		}
+		if ( strpos( $argsStr, '/' ) !== false ) {
+			$sp = explode( '/', $argsStr );
+			if ( count( $sp ) !== 2 || !self::isValidAlpha( trim( $sp[1] ) ) ) {
+				return false;
+			}
+			$argsStr = $sp[0];
+		}
+		$parts = preg_split( '/\s+/', trim( $argsStr ) );
+		if ( count( $parts ) !== 3 ) {
+			return false;
+		}
+		if ( $fn === 'hsl' ) {
+			if ( !preg_match( '/^-?(?:\d+(?:\.\d+)?|\.\d+)(?:deg|grad|rad|turn)?$/', $parts[0] ) ) {
+				return false;
+			}
+			$rest = [ $parts[1], $parts[2] ];
+			$max = 100;
+		} else {
+			$rest = $parts;
+			$max = 255;
+		}
+		foreach ( $rest as $p ) {
+			if ( !preg_match( '/^((?:\d{1,3}(?:\.\d+)?|\.\d+))(%?)$/', $p, $mm ) ) {
+				return false;
+			}
+			if ( (float)$mm[1] > ( $mm[2] === '%' ? 100 : $max ) ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Noms de couleurs CSS clairs (texte sombre nécessaire dessus). */
+	private static $LIGHT_CSS_COLORS = [
+		'white', 'ivory', 'yellow', 'lightyellow', 'lightgray', 'lightgrey', 'gold', 'beige', 'wheat',
+		'pink', 'lightblue', 'lightgreen', 'cyan', 'aqua', 'lime', 'silver', 'khaki', 'lavender',
+		'linen', 'snow', 'whitesmoke', 'gainsboro', 'honeydew', 'mintcream', 'azure', 'aliceblue',
+		'seashell', 'oldlace', 'cornsilk', 'lemonchiffon', 'palegoldenrod', 'paleturquoise',
+		'palegreen', 'peachpuff', 'mistyrose', 'bisque', 'moccasin', 'navajowhite', 'papayawhip',
+		'blanchedalmond', 'antiquewhite', 'floralwhite', 'ghostwhite', 'lightcyan', 'lightpink',
+		'lightsalmon', 'lightskyblue', 'lightsteelblue', 'greenyellow', 'powderblue', 'thistle',
+		'plum', 'lavenderblush', 'lightgoldenrodyellow', 'aquamarine', 'chartreuse', 'springgreen',
+	];
+
+	/**
+	 * Couleur de texte lisible (contraste) pour un fond de bouton donné.
+	 * Retourne null si le fond est transparent/currentcolor (ne rien forcer).
+	 *
+	 * @param string $color Couleur CSS déjà validée
+	 * @return string|null
+	 */
+	public static function getContrastTextColor( $color ) {
+		$c = strtolower( trim( (string)$color ) );
+		if ( $c === '' || $c === 'transparent' || $c === 'currentcolor' ) {
+			return null;
+		}
+		$dark = '#202122';
+		$light = '#ffffff';
+		$rgb = null;
+		if ( preg_match( '/^#([0-9a-f]+)$/', $c, $m ) ) {
+			$h = $m[1];
+			if ( strlen( $h ) <= 4 ) {
+				$h = $h[0] . $h[0] . $h[1] . $h[1] . $h[2] . $h[2];
+			}
+			$rgb = [ hexdec( substr( $h, 0, 2 ) ), hexdec( substr( $h, 2, 2 ) ), hexdec( substr( $h, 4, 2 ) ) ];
+		} elseif ( preg_match( '/^rgba?\(\s*([\d.]+)(%?)[\s,]+([\d.]+)(%?)[\s,]+([\d.]+)(%?)/', $c, $m ) ) {
+			$rgb = [];
+			foreach ( [ [ 1, 2 ], [ 3, 4 ], [ 5, 6 ] ] as $p ) {
+				$v = (float)$m[ $p[0] ];
+				$rgb[] = $m[ $p[1] ] === '%' ? $v * 2.55 : $v;
+			}
+		} elseif ( preg_match( '/^hsla?\(\s*[^,\s]+[\s,]+[\d.]+%[\s,]+([\d.]+)%/', $c, $m ) ) {
+			return (float)$m[1] > 60 ? $dark : $light;
+		} elseif ( in_array( $c, self::$LIGHT_CSS_COLORS, true ) ) {
+			return $dark;
+		} else {
+			return $light;
+		}
+		$yiq = ( $rgb[0] * 299 + $rgb[1] * 587 + $rgb[2] * 114 ) / 1000;
+		return $yiq >= 150 ? $dark : $light;
+	}
+
 	/**
 	 * Valide une valeur de couleur CSS pour le rendu serveur (hex, rgb(a),
 	 * hsl(a) ou nom de couleur). Le fallback dynamique utilise CSS.supports()
 	 * pour s'aligner sur le moteur CSS du navigateur sans dupliquer cette liste.
-	 * Valide une valeur de couleur CSS (hex, rgb(a), hsl(a) ou nom de couleur).
-	 * Identique à isValidCssColor() côté JS.
+	 * Accepte les syntaxes legacy (virgules) et modernes (espaces, « / alpha »),
+	 * comme CSS.supports() côté JS.
 	 *
 	 * @param string|null $val
 	 * @return bool
@@ -135,11 +226,11 @@ class ExtendedInputboxConfig {
 		}
 
 		if ( preg_match( '/^rgba?\(([^)]*)\)$/i', $val, $m ) ) {
-			return self::isValidRgbArgs( $m[1] );
+			return self::isValidRgbArgs( $m[1] ) || self::isValidModernArgs( $m[1], 'rgb' );
 		}
 
 		if ( preg_match( '/^hsla?\(([^)]*)\)$/i', $val, $m ) ) {
-			return self::isValidHslArgs( $m[1] );
+			return self::isValidHslArgs( $m[1] ) || self::isValidModernArgs( $m[1], 'hsl' );
 		}
 
 		$lower = strtolower( $val );
@@ -171,8 +262,9 @@ class ExtendedInputboxConfig {
 	 */
 	private static function stripNonRenderedRegions( $wikitext ) {
 		$wikitext = preg_replace( '/<!--[\s\S]*?-->/', '', $wikitext );
-		$wikitext = preg_replace( '/<nowiki\s*\/?>[\s\S]*?(<\/nowiki>|$)/i', '', $wikitext );
-		$wikitext = preg_replace( '/<pre\b[^>]*>[\s\S]*?(<\/pre>|$)/i', '', $wikitext );
+		$wikitext = preg_replace( '/<nowiki\s*\/>/i', '', $wikitext );
+		$wikitext = preg_replace( '/<nowiki\s*>[\s\S]*?(<\/nowiki>|$)/i', '', $wikitext );
+		$wikitext = preg_replace( '/<(pre|syntaxhighlight|source)\b[^>]*>[\s\S]*?(<\/\1>|$)/i', '', $wikitext );
 		return $wikitext;
 	}
 
@@ -185,12 +277,32 @@ class ExtendedInputboxConfig {
 	 * @return array[] Liste de configs
 	 */
 	public static function extractConfigs( $wikitext ) {
-		$configs = [];
-		$wikitext = self::stripNonRenderedRegions( $wikitext );
+		return self::parseBlocks( self::extractRawBlocks( $wikitext ) );
+	}
+
+	/**
+	 * Extrait le contenu brut de chaque <inputbox> réellement rendu (léger,
+	 * sérialisable : c'est ce qui est mis en cache par ExtendedInputboxHooks).
+	 *
+	 * @param string $wikitext
+	 * @return string[]
+	 */
+	public static function extractRawBlocks( $wikitext ) {
+		$wikitext = self::stripNonRenderedRegions( (string)$wikitext );
 		if ( preg_match_all( '/<inputbox>([\s\S]*?)<\/inputbox>/i', $wikitext, $matches ) ) {
-			foreach ( $matches[1] as $rawText ) {
-				$configs[] = self::parseSingleConfig( $rawText );
-			}
+			return $matches[1];
+		}
+		return [];
+	}
+
+	/**
+	 * @param string[] $blocks
+	 * @return array[]
+	 */
+	public static function parseBlocks( array $blocks ) {
+		$configs = [];
+		foreach ( $blocks as $rawText ) {
+			$configs[] = self::parseSingleConfig( $rawText );
 		}
 		return $configs;
 	}

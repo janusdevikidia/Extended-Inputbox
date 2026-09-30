@@ -14,6 +14,142 @@
 	function getApi() {
 		return api || ( api = new mw.Api() );
 	}
+
+	/**
+	 * Extrait d'une entrée d'erreur AbuseFilter : le numéro du filtre, sa
+	 * description, et le nom de la page MediaWiki: du message affiché. Le code
+	 * d'erreur de l'API est la clé du message (ex. "abusefilter-disallowed-noip"),
+	 * donc la page est "MediaWiki:Abusefilter-disallowed-noip".
+	 *
+	 * @param {Object} e Une entrée de data.errors[] (ou data.error en bc)
+	 * @return {{id: (string|number|undefined), description: string, page: string}}
+	 */
+	function abuseFilterInfo( e ) {
+		var af = ( e && ( ( e.data && e.data.abusefilter ) || e.abusefilter ) ) || {};
+		// Le code d'erreur est souvent générique ("abusefilter-disallowed") : la
+		// vraie clé du message personnalisé n'apparaît que si la page est absente
+		// (MediaWiki affiche alors "⧼abusefilter-disallowed-1⧽" dans le HTML).
+		var m = e && e.html && e.html.match( /\u29FC([^\u29FD]+)\u29FD/ );
+		var key = m ? m[ 1 ] : ( ( e && e.code ) || '' );
+		var page = /^abusefilter-/i.test( key ) ?
+			'MediaWiki:' + key.charAt( 0 ).toUpperCase() + key.slice( 1 ) : '';
+		return { id: af.id, description: af.description || '', page: page };
+	}
+
+	/**
+	 * Convertit un tableau d'erreurs au format `errorformat=html` de l'API
+	 * MediaWiki (ex. avertissements AbuseFilter) en un unique fragment HTML.
+	 * Pour un filtre AbuseFilter, préfixe le numéro du filtre et le nom de la
+	 * page de message, puis affiche le VRAI contenu rendu de cette page
+	 * (`e.html`, avec ses <div>/wikicode). La description du filtre n'est
+	 * utilisée qu'en dernier recours.
+	 *
+	 * @param {Array|undefined} errArray
+	 * @return {string} Chaîne vide (HTML) si rien d'exploitable.
+	 */
+	function errorsToHtml( errArray ) {
+		if ( !Array.isArray( errArray ) || !errArray.length ) {
+			return '';
+		}
+		return errArray.map( function ( e ) {
+			var info = abuseFilterInfo( e );
+			var body = ( e && ( e.html || ( e.text ? mw.html.escape( e.text ) : '' ) ) ) || mw.html.escape( info.description );
+			if ( !body ) {
+				return '';
+			}
+			var head = '';
+			if ( info.id ) {
+				head = '<p><strong>' +
+					mw.html.escape( mw.msg( 'extendedinputbox-error-filter', info.id ) ) +
+					( info.page ? ' (' + mw.html.escape( info.page ) + ')' : '' ) +
+					'</strong></p>';
+			}
+			return head + '<div class="eib-filter-message">' + body + '</div>';
+		} ).filter( Boolean ).join( '' );
+	}
+
+	/**
+	 * Si l'API a rendu un message manquant sous la forme "⧼clé⧽" (ex.
+	 * ⧼abusefilter-disallowed-1⧽), va chercher soi-même le contenu de la page
+	 * MediaWiki:<clé> via action=parse et le substitue. Les paramètres $1
+	 * (description) et $2 (numéro du filtre) sont remplacés comme le ferait
+	 * MediaWiki. Si la page n'existe vraiment pas, le "⧼clé⧽" est conservé.
+	 *
+	 * @param {string} html HTML retourné par extractApiError()
+	 * @param {Object} data Objet d'erreur complet de l'API
+	 * @return {jQuery.Promise} Résolue avec le HTML final (jamais rejetée).
+	 */
+	function resolveMissingMessages( html, data ) {
+		var re = /\u29FC([^\u29FD]+)\u29FD/g;
+		var keys = [];
+		var m;
+		while ( ( m = re.exec( html ) ) ) {
+			if ( keys.indexOf( m[ 1 ] ) === -1 ) {
+				keys.push( m[ 1 ] );
+			}
+		}
+		if ( !keys.length ) {
+			return $.Deferred().resolve( html ).promise();
+		}
+		var first = ( data && data.errors && data.errors[ 0 ] ) || ( data && data.error ) || {};
+		var info = abuseFilterInfo( first );
+		return $.when.apply( $, keys.map( function ( key ) {
+			var page = 'MediaWiki:' + key.charAt( 0 ).toUpperCase() + key.slice( 1 );
+			return getApi().get( {
+				action: 'parse',
+				page: page,
+				prop: 'text',
+				disablelimitreport: 1,
+				disableeditsection: 1,
+				formatversion: 2
+			} ).then( function ( res ) {
+				return { key: key, html: ( res && res.parse && res.parse.text ) || '' };
+			}, function () {
+				return $.Deferred().resolve( { key: key, html: '' } );
+			} );
+		} ) ).then( function () {
+			Array.prototype.slice.call( arguments ).forEach( function ( r ) {
+				if ( !r.html ) { return; }
+				var body = r.html
+					.replace( /\$1/g, function () { return mw.html.escape( info.description ); } )
+					.replace( /\$2/g, function () { return mw.html.escape( String( info.id || '' ) ); } );
+				html = html.split( '\u29FC' + r.key + '\u29FD' ).join( body );
+			} );
+			return html;
+		} );
+	}
+
+	/**
+	 * Extrait un message d'erreur (HTML) lisible d'un échec mw.Api, dans cet
+	 * ordre :
+	 * 1) le contenu réel de `errorformat=html` (data.errors[].html), qui est
+	 *    le texte/HTML effectivement configuré pour ce filtre ;
+	 * 2) l'objet d'erreur "bc" classique (avec sa propre description
+	 *    AbuseFilter éventuelle) ;
+	 * 3) en dernier recours, le code brut (ex. "abusefilter-disallowed-noip"),
+	 *    signe qu'aucune page de message ni description de filtre n'a pu être
+	 *    récupérée — il faut alors vérifier côté wiki que la page
+	 *    MediaWiki:Abusefilter-disallowed-noip existe et contient le texte voulu.
+	 *
+	 * @return {string} HTML (potentiellement juste du texte simple) à insérer
+	 *  tel quel — ne PAS re-échapper avant affichage.
+	 */
+	function extractApiError( code, data ) {
+		var fromErrors = data && errorsToHtml( data.errors );
+		if ( fromErrors ) {
+			return fromErrors;
+		}
+		if ( data && data.error ) {
+			if ( data.error.html || data.error.info ) {
+				return data.error.html || mw.html.escape( data.error.info );
+			}
+			var fromDescription = mw.html.escape( abuseFilterInfo( data.error ).description );
+			if ( fromDescription ) {
+				return fromDescription;
+			}
+		}
+		return mw.html.escape( code || 'unknown-error' );
+	}
 	var configs = mw.config.get( 'extendedInputboxConfigs' ) || {};
 
 	// Décalage (en minutes) entre le fuseau horaire configuré côté serveur
@@ -58,6 +194,17 @@
 			} );
 		} );
 	} );
+
+	// Interdit la publication directe vers les pages sensibles (interface,
+	// scripts, styles, JSON) : une popup piégée y ferait publier du code au
+	// nom de l'utilisateur sans qu'il voie l'écran d'édition.
+	function isForbiddenSkipEditTarget( title ) {
+		var t = mw.Title.newFromText( title );
+		if ( !t ) {
+			return true;
+		}
+		return t.getNamespaceId() === 8 || /\.(js|css|json)$/i.test( t.getMain() );
+	}
 
 	function getISOWeek( d ) {
 		var date = new Date( Date.UTC( d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() ) );
@@ -127,14 +274,14 @@
 			'CURRENTWEEK': current.week,
 			'USER': userName,
 			'REVISIONUSER': userName,
-			'PAGENAME': pageName,
-			'FULLPAGENAME': pageName
+			'PAGENAME': mw.config.get( 'wgTitle' ) || pageName.replace( /_/g, ' ' ),
+			'FULLPAGENAME': pageName.replace( /_/g, ' ' )
 		};
 
 		var result = text;
 		Object.keys( magicMap ).forEach( function ( key ) {
 			var regex = new RegExp( '\\{\\{\\s*' + key + '\\s*\\}\\}', 'gi' );
-			result = result.replace( regex, magicMap[ key ] );
+			result = result.replace( regex, function () { return magicMap[ key ]; } );
 		} );
 
 		return result;
@@ -166,25 +313,19 @@
 
 	function replaceVariables( text, paramOrder, formData, fields ) {
 		if ( !text ) { return ''; }
-		var result = text;
 
 		var totalVars = Math.max( paramOrder.length, fields.length, 9 );
-		var items = [];
-
+		var values = {};
 		for ( var i = 0; i < totalVars; i++ ) {
 			var paramKey = paramOrder[ i ] || ( i < fields.length ? fields[ i ].name : ( i + 1 ).toString() );
-			var val = getParamValue( paramKey, i, formData, fields );
-			items.push( { num: i + 1, value: val } );
+			values[ i + 1 ] = getParamValue( paramKey, i, formData, fields );
 		}
 
-		items.sort( function ( a, b ) { return b.num - a.num; } );
-
-		items.forEach( function ( item ) {
-			var regex = new RegExp( '\\$' + item.num + '(?!\\d)', 'g' );
-			result = result.replace( regex, function () { return item.value; } );
+		// Passe unique : une valeur saisie contenant « $2 » n'est jamais
+		// re-substituée, et $10+ est géré.
+		return text.replace( /\$(\d+)/g, function ( match, n ) {
+			return Object.prototype.hasOwnProperty.call( values, n ) ? values[ n ] : match;
 		} );
-
-		return result;
 	}
 
 	// Seule option OOUI native encore utilisée pour les champs texte libre
@@ -470,6 +611,12 @@
 					var preloadTemplate = config.preload || config.rawParams.preload || '';
 
 					if ( config.skipEdit ) {
+						if ( isForbiddenSkipEditTarget( targetPage ) ) {
+							return $.Deferred().reject( new OO.ui.Error(
+								mw.msg( 'extendedinputbox-error-skipedit-forbidden', targetPage )
+							) );
+						}
+						var runSkipEdit = function () {
 						var fetchPreload = $.Deferred();
 
 						if ( preloadTemplate ) {
@@ -512,7 +659,20 @@
 							var editData = {
 								action: 'edit',
 								title: targetPage,
-								text: wikitext
+								text: wikitext,
+								// errorformat=plaintext : demande à l'API de renvoyer, pour
+								// chaque erreur/avertissement (y compris ceux d'AbuseFilter),
+								// un texte déjà localisé et lisible dans data.errors[].text
+								// plutôt que le seul code brut (ex. "abusefilter-disallowed-noip").
+								// errorformat=html : demande à l'API le VRAI contenu de la page
+								// de message du filtre (ex. MediaWiki:Abusefilter-disallowed-1),
+								// avec sa mise en forme (une <div>, des liens, etc.) au lieu du
+								// texte brut dépouillé. Voir errorsToHtml()/extractApiError().
+								// formatversion=2 assure une structure JSON stable pour
+								// data.errors[].data.abusefilter (description du filtre, utilisée
+								// seulement en dernier recours si la page de message est absente).
+								errorformat: 'html',
+								formatversion: 2
 							};
 
 							if ( config.rawParams.type === 'commenttitle' || config.rawParams.type === 'comment' ) {
@@ -520,6 +680,11 @@
 								if ( sectionTitle ) {
 									editData.sectiontitle = sectionTitle;
 								}
+							}
+
+							// Sans section=new, on ne doit jamais écraser une page existante.
+							if ( !editData.section ) {
+								editData.createonly = 1;
 							}
 
 							if ( editSummary ) {
@@ -530,14 +695,36 @@
 								dialog.close();
 								window.location.href = mw.util.getUrl( targetPage );
 							}, function ( code, data ) {
-								var errorMsg = ( data && data.error && data.error.info ) ? data.error.info : code;
-								return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-publish', errorMsg ) ) );
+								// extractApiError() renvoie du HTML (contenu réel de la page
+								// de message du filtre, ex. sa <div>) : on l'insère tel quel,
+								// sans le ré-échapper. mw.message( key ).plain() donne le texte
+								// BRUT du message ("Erreur lors de la publication : $1", sans
+								// aucun parsing ni substitution) : on remplace nous-mêmes "$1"
+								// pour garder le HTML intact, puis on passe un élément jQuery à
+								// OO.ui.Error (accepté en plus du texte brut), qui affiche donc
+								// la mise en forme d'origine au lieu de l'échapper.
+								if ( code === 'articleexists' ) {
+									return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-page-exists', targetPage ) ) );
+								}
+								var errorHtml = extractApiError( code, data );
+								var template = mw.message( 'extendedinputbox-error-publish' ).plain();
+								return resolveMissingMessages( errorHtml, data ).then( function ( finalHtml ) {
+									var combined = template.replace( '$1', function () { return finalHtml; } );
+									return $.Deferred().reject( new OO.ui.Error( $( '<div>' ).html( combined ) ) );
+								} );
 							} );
 						}, function () {
 							// Échec de récupération du preload : on bloque la publication
 							// et on affiche l'erreur dans la popup, plutôt que de publier
 							// une page vide (voir commentaire plus haut).
 							return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-preload-fetch', preloadTemplate ) ) );
+						} );
+						};
+						// La publication directe contourne l'écran d'édition : on montre
+						// toujours la page cible avant d'écrire, car page=/preload= sont
+						// choisis par l'auteur de la page, pas par le visiteur.
+						return OO.ui.confirm( mw.msg( 'extendedinputbox-confirm-skipedit', targetPage ) ).then( function ( ok ) {
+							return ok ? runSkipEdit() : $.Deferred().resolve();
 						} );
 					}
 
@@ -592,3 +779,5 @@
 
 } )( jQuery, mediaWiki );
 // </nowiki>
+
+
