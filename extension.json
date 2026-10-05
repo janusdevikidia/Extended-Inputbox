@@ -5,6 +5,7 @@
         "Célian",
         "Janus"
     ],
+    "license-name": "GPL-3.0-or-later",
     "url": "https://github.com/Janusdevikidia/Extended-Inputbox",
     "descriptionmsg": "extendedinputbox-desc",
     "type": "parserhook",
