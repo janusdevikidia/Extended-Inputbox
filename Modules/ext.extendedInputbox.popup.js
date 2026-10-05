@@ -720,12 +720,8 @@
 							return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-preload-fetch', preloadTemplate ) ) );
 						} );
 						};
-						// La publication directe contourne l'écran d'édition : on montre
-						// toujours la page cible avant d'écrire, car page=/preload= sont
-						// choisis par l'auteur de la page, pas par le visiteur.
-						return OO.ui.confirm( mw.msg( 'extendedinputbox-confirm-skipedit', targetPage ) ).then( function ( ok ) {
-							return ok ? runSkipEdit() : $.Deferred().resolve();
-						} );
+						// Publication directe, sans confirmation intermédiaire.
+						return runSkipEdit();
 					}
 
 					delete urlParams.title;
@@ -779,5 +775,3 @@
 
 } )( jQuery, mediaWiki );
 // </nowiki>
-
-
