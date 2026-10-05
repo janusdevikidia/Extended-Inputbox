@@ -1,5 +1,9 @@
 # Extended Inputbox
 
+![version](https://img.shields.io/badge/version-3.0.1-007ec6)
+![license](https://img.shields.io/badge/license-GPL--3.0-4c1)
+![MediaWiki](https://img.shields.io/badge/MediaWiki-%3E%3D%201.39.0-006699)
+
 Extension MediaWiki qui ajoute des formulaires en fenêtre modale aux balises
 `<inputbox>` de l'extension [InputBox]. Elle permet notamment de recueillir
 plusieurs valeurs avant de créer ou modifier une page, de précharger un modèle
