@@ -44,6 +44,7 @@
 	"extendedinputbox-special-type-search": "Search (search)",
 	"extendedinputbox-special-type-create": "Create page (create)",
 	"extendedinputbox-special-type-comment": "Add comment (comment)",
+	"extendedinputbox-special-type-commenttitle": "Add comment with title (commenttitle)",
 	"extendedinputbox-special-type-move": "Move page (move)",
 	"extendedinputbox-special-field-row-name": "Field name",
 	"extendedinputbox-special-field-row-label": "Label",

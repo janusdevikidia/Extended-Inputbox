@@ -235,6 +235,7 @@
 				{ data: 'search', label: mw.msg( 'extendedinputbox-special-type-search' ) },
 				{ data: 'create', label: mw.msg( 'extendedinputbox-special-type-create' ) },
 				{ data: 'comment', label: mw.msg( 'extendedinputbox-special-type-comment' ) },
+				{ data: 'commenttitle', label: mw.msg( 'extendedinputbox-special-type-commenttitle' ) },
 				{ data: 'move', label: mw.msg( 'extendedinputbox-special-type-move' ) }
 			],
 			value: g.type

@@ -44,6 +44,7 @@
 	"extendedinputbox-special-type-search": "Recherche (search)",
 	"extendedinputbox-special-type-create": "Création de page (create)",
 	"extendedinputbox-special-type-comment": "Ajout de commentaire (comment)",
+	"extendedinputbox-special-type-commenttitle": "Ajout de commentaire avec titre (commenttitle)",
 	"extendedinputbox-special-type-move": "Renommage de page (move)",
 	"extendedinputbox-special-field-row-name": "Nom du champ",
 	"extendedinputbox-special-field-row-label": "Libellé",

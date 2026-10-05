@@ -44,6 +44,7 @@
 	"extendedinputbox-special-type-search": "Dropdown option for InputBox type=search.",
 	"extendedinputbox-special-type-create": "Dropdown option for InputBox type=create.",
 	"extendedinputbox-special-type-comment": "Dropdown option for InputBox type=comment.",
+	"extendedinputbox-special-type-commenttitle": "Dropdown option for InputBox type=commenttitle.",
 	"extendedinputbox-special-type-move": "Dropdown option for InputBox type=move.",
 	"extendedinputbox-special-field-row-name": "Placeholder of the \"name\" text input inside a popup-field row.",
 	"extendedinputbox-special-field-row-label": "Placeholder of the \"label\" text input inside a popup-field row.",
