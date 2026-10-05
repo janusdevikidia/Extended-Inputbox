@@ -537,18 +537,6 @@
 			this.$body.append( this.content.$element );
 		};
 
-		// Affiche (ou met à jour) l'avertissement de confirmation de la
-		// publication directe, en tête du contenu de la popup.
-		ExtendedDialog.prototype.showConfirmNotice = function ( text ) {
-			if ( !this.confirmNotice ) {
-				this.confirmNotice = new OO.ui.MessageWidget( { type: 'warning', label: text } );
-				this.content.$element.prepend( this.confirmNotice.$element );
-			} else {
-				this.confirmNotice.setLabel( text );
-			}
-			this.updateSize();
-		};
-
 		// NB : OO.ui.ProcessDialog gère nativement l'état de chargement et le
 		// verrouillage anti-double-soumission pendant l'exécution d'un
 		// OO.ui.Process : Dialog#executeAction appelle pushPending() (qui
@@ -732,18 +720,7 @@
 							return $.Deferred().reject( new OO.ui.Error( mw.msg( 'extendedinputbox-error-preload-fetch', preloadTemplate ) ) );
 						} );
 						};
-						// La publication directe contourne l'écran d'édition : on montre
-						// toujours la page cible avant d'écrire, car page=/preload= sont
-						// choisis par l'auteur de la page, pas par le visiteur.
-						// Confirmation en deux temps DANS la popup : un OO.ui.confirm()
-						// ouvrirait une seconde fenêtre modale (autre WindowManager) par-dessus
-						// la popup déjà ouverte ; son calque bloquait alors tous les clics
-						// pendant que « Valider » restait en chargement infini.
-						if ( dialog.confirmedTarget !== targetPage ) {
-							dialog.confirmedTarget = targetPage;
-							dialog.showConfirmNotice( mw.msg( 'extendedinputbox-confirm-skipedit', targetPage ) );
-							return $.Deferred().resolve();
-						}
+						// Publication directe, sans confirmation intermédiaire.
 						return runSkipEdit();
 					}
 
