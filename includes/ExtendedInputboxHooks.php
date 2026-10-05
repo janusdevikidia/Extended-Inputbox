@@ -1,7 +1,29 @@
 <?php
 
-use MediaWiki\MediaWikiServices;
+namespace MediaWiki\Extension\ExtendedInputbox;
 
+use DOMDocument;
+use DOMElement;
+use DOMNodeList;
+use DOMXPath;
+use DateTime;
+use DateTimeZone;
+use Exception;
+use MediaWiki\Content\WikitextContent;
+use MediaWiki\MainConfigNames;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Title\Title;
+use Throwable;
+
+/**
+ * Gestionnaires de hooks (enregistrés via "HookHandlers" dans extension.json).
+ * Les interfaces de hooks ne sont volontairement pas implémentées : leur
+ * namespace a changé entre versions de MediaWiki, alors que les noms de
+ * méthodes (onXxx) restent stables.
+ */
 class ExtendedInputboxHooks
 {
 
@@ -13,7 +35,7 @@ class ExtendedInputboxHooks
 	 * ("aucun inputbox → aucun JS") ; le cas normal (InputBox posé dans le
 	 * wikitexte de la page) reste couvert à 100%.
 	 */
-	public static function onBeforePageDisplay(OutputPage $out, $skin)
+	public function onBeforePageDisplay( $out, $skin )
 	{
 		// Ne rien charger du tout sur les pages sans InputBox : à ce stade,
 		// OutputPageBeforeHTML a déjà transformé $out (mBodytext), donc getHTML()
@@ -36,14 +58,14 @@ class ExtendedInputboxHooks
 		}
 	}
 
-	public static function onOutputPageBeforeHTML(OutputPage $out, &$text)
+	public function onOutputPageBeforeHTML( $out, &$text )
 	{
 		if (strpos($text, 'mw-inputbox') === false && strpos($text, 'createbox') === false) {
 			return;
 		}
 
 		$title = $out->getTitle();
-		if (!$title || !$title->exists() || $title->getContentModel() !== CONTENT_MODEL_WIKITEXT) {
+		if (!$title || !$title->exists() || $title->getContentModel() !== 'wikitext') {
 			return;
 		}
 
@@ -54,7 +76,9 @@ class ExtendedInputboxHooks
 			return;
 		}
 		$shownRev = $out->getRevisionId();
-		if ($shownRev && (int) $shownRev !== (int) $title->getLatestRevID()) {
+		$latestRev = MediaWikiServices::getInstance()->getWikiPageFactory()
+			->newFromTitle($title)->getLatest();
+		if ($shownRev && (int) $shownRev !== (int) $latestRev) {
 			return;
 		}
 
@@ -98,7 +122,9 @@ class ExtendedInputboxHooks
 		);
 
 		return $cache->getWithSetCallback($key, $cache::TTL_DAY, static function () use ($services, $wikiPage, $title) {
-			$content = $wikiPage->getContent();
+			// WikiPage::getContent() est déprécié (1.36) : on passe par la RevisionRecord.
+			$revision = $wikiPage->getRevisionRecord();
+			$content = $revision ? $revision->getContent(SlotRecord::MAIN) : null;
 			if (!$content instanceof WikitextContent) {
 				return [];
 			}
@@ -243,9 +269,8 @@ class ExtendedInputboxHooks
 	 */
 	private static function getLocalTimezoneOffsetMinutes()
 	{
-		global $wgLocaltimezone;
-
-		$tzName = $wgLocaltimezone ?: 'UTC';
+		$tzName = MediaWikiServices::getInstance()->getMainConfig()
+			->get(MainConfigNames::Localtimezone) ?: 'UTC';
 
 		try {
 			$tz = new DateTimeZone($tzName);

@@ -1,20 +1,20 @@
 # Extended Inputbox
 
-![version](https://img.shields.io/badge/version-3.0.1-007ec6)
+![version](https://img.shields.io/badge/version-3.1.0-007ec6)
 ![license](https://img.shields.io/badge/license-GPL--3.0-4c1)
-![MediaWiki](https://img.shields.io/badge/MediaWiki-%3E%3D%201.39.0-006699)
+![MediaWiki](https://img.shields.io/badge/MediaWiki-%3E%3D%201.43.0-006699)
 
 Extension MediaWiki qui ajoute des formulaires en fenêtre modale aux balises
 `<inputbox>` de l'extension [InputBox]. Elle permet notamment de recueillir
 plusieurs valeurs avant de créer ou modifier une page, de précharger un modèle
 et de personnaliser le bouton.
 
-Version actuelle : **3.0.1**. Compatible avec MediaWiki **1.39+** et avec
+Version actuelle : **3.1.0**. Compatible avec MediaWiki **1.43 à 1.47** et avec
 l'extension **InputBox**.
 
 ## Prérequis
 
-* MediaWiki 1.39 ou supérieur
+* MediaWiki 1.43 ou supérieur (testé par revue de code pour 1.47 ; PHP 8.3+ requis par 1.47)
 * Extension [InputBox](https://www.mediawiki.org/wiki/Extension:InputBox) installée et activée
 
 ---

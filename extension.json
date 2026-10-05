@@ -1,6 +1,6 @@
 {
     "name": "Extended-Inputbox",
-    "version": "3.0.1",
+    "version": "3.1.0",
     "author": [
         "Célian",
         "Janus"
@@ -14,15 +14,13 @@
         "extensions": {
             "InputBox": "*"
         },
-        "MediaWiki": ">= 1.39.0"
+        "MediaWiki": ">= 1.43.0"
     },
-    "AutoloadClasses": {
-        "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php",
-        "ExtendedInputboxConfig": "includes/ExtendedInputboxConfig.php",
-        "SpecialExtendedInputbox": "includes/SpecialExtendedInputbox.php"
+    "AutoloadNamespaces": {
+        "MediaWiki\\Extension\\ExtendedInputbox\\": "includes/"
     },
     "SpecialPages": {
-        "Extended-Inputbox": "SpecialExtendedInputbox"
+        "Extended-Inputbox": "MediaWiki\\Extension\\ExtendedInputbox\\SpecialExtendedInputbox"
     },
     "ResourceFileModulePaths": {
         "localBasePath": "",
@@ -182,8 +180,8 @@
         }
     },
     "Hooks": {
-        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay",
-        "OutputPageBeforeHTML": "ExtendedInputboxHooks::onOutputPageBeforeHTML"
+        "BeforePageDisplay": "main",
+        "OutputPageBeforeHTML": "main"
     },
     "MessagesDirs": {
         "ExtendedInputbox": [
@@ -192,5 +190,10 @@
     },
     "ExtensionMessagesFiles": {
         "ExtendedInputboxAlias": "ExtendedInputbox.alias.php"
+    },
+    "HookHandlers": {
+        "main": {
+            "class": "MediaWiki\\Extension\\ExtendedInputbox\\ExtendedInputboxHooks"
+        }
     }
 }

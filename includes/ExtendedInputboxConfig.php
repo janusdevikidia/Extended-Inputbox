@@ -1,5 +1,7 @@
 <?php
 
+namespace MediaWiki\Extension\ExtendedInputbox;
+
 /**
  * Portage PHP du parsing de configuration <inputbox> (auparavant fait en JS,
  * côté client, après coup). Le faire ici permet de calculer couleurs et
@@ -391,7 +393,7 @@ class ExtendedInputboxConfig {
 					$config['preload'] = $val;
 					break;
 				case 'popup-preload':
-					$config['errors'][] = wfMessage( 'extendedinputbox-error-popup-preload-deprecated' )->text();
+					$config['errors'][] = \wfMessage( 'extendedinputbox-error-popup-preload-deprecated' )->text();
 					break;
 				case 'popup-title':
 					$config['title'] = $val;
@@ -414,7 +416,7 @@ class ExtendedInputboxConfig {
 					if ( self::isValidCssColor( $val ) ) {
 						$config['buttonBgColor'] = $val;
 					} else {
-						$config['errors'][] = wfMessage( 'extendedinputbox-error-invalid-bgcolor' )->text();
+						$config['errors'][] = \wfMessage( 'extendedinputbox-error-invalid-bgcolor' )->text();
 					}
 					break;
 				case 'button-border-color':
@@ -422,7 +424,7 @@ class ExtendedInputboxConfig {
 					if ( self::isValidCssColor( $val ) ) {
 						$config['buttonBorderColor'] = $val;
 					} else {
-						$config['errors'][] = wfMessage( 'extendedinputbox-error-invalid-bordercolor' )->text();
+						$config['errors'][] = \wfMessage( 'extendedinputbox-error-invalid-bordercolor' )->text();
 					}
 					break;
 				case 'popup-field':
@@ -444,7 +446,7 @@ class ExtendedInputboxConfig {
 						// signale explicitement plutôt que de laisser faire.
 						foreach ( $config['fields'] as $existingField ) {
 							if ( $existingField['name'] === $parts[0] ) {
-								$config['errors'][] = wfMessage( 'extendedinputbox-error-duplicate-field', $parts[0] )->text();
+								$config['errors'][] = \wfMessage( 'extendedinputbox-error-duplicate-field', $parts[0] )->text();
 								break;
 							}
 						}
