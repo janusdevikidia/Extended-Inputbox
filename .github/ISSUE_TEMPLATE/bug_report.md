@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Creation d'un ticket BUG
-title: "[BUG]"
+title: "[BUG] :"
 labels: bug
 assignees: ''
 type: Bug
