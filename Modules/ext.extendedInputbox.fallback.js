@@ -122,8 +122,8 @@
 		}
 
 		var $forms = [];
-		$content.find( '.mw-inputbox-centered, .mw-inputbox-container, form.createbox' ).each( function () {
-			var $f = $( this ).is( 'form' ) ? $( this ) : $( this ).find( 'form' );
+		$content.find( 'form.createbox, form.commentbox, form.mw-movebox, form.searchbox, form.bodySearch' ).each( function () {
+			var $f = $( this );
 			if ( $f.length && $f.attr( 'data-eib-index' ) !== undefined ) {
 				return;
 			}

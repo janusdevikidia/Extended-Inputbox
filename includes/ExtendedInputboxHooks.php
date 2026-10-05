@@ -128,10 +128,19 @@ class ExtendedInputboxHooks
 		$dom = $parsedHtml['dom'];
 		$xpath = $parsedHtml['xpath'];
 		$wrapper = $parsedHtml['wrapper'];
+		// Un <inputbox> = exactement UN <form>. On apparie donc par formulaire :
+		// l'ancien sélecteur (div.mw-inputbox-centered OU form.createbox) comptait
+		// deux nœuds pour un type=create (div + form) et zéro pour search2, ce qui
+		// décalait l'index et donnait la mauvaise config (ou aucune) aux inputbox
+		// suivants de la page, par ex. un commenttitle placé après un create.
 		$nodes = $xpath->query(
-			"//*[contains(concat(' ', normalize-space(@class), ' '), ' mw-inputbox-centered ')" .
-			" or contains(concat(' ', normalize-space(@class), ' '), ' mw-inputbox-container ')" .
-			" or (local-name()='form' and contains(concat(' ', normalize-space(@class), ' '), ' createbox '))]"
+			"//form[" .
+			"contains(concat(' ', normalize-space(@class), ' '), ' createbox ')" .
+			" or contains(concat(' ', normalize-space(@class), ' '), ' commentbox ')" .
+			" or contains(concat(' ', normalize-space(@class), ' '), ' mw-movebox ')" .
+			" or contains(concat(' ', normalize-space(@class), ' '), ' searchbox ')" .
+			" or contains(concat(' ', normalize-space(@class), ' '), ' bodySearch ')" .
+			"]"
 		);
 		if (!($nodes instanceof DOMNodeList) || !$nodes->length) {
 			return false;
@@ -193,7 +202,7 @@ class ExtendedInputboxHooks
 			}
 
 			if ($hasErrors) {
-				$containerModified = self::appendErrorNode($dom, $container, $config['errors']) || $containerModified;
+				$containerModified = self::appendErrorNode($dom, self::findOuterContainer($xpath, $container), $config['errors']) || $containerModified;
 			}
 
 			$domModified = $containerModified || $domModified;
@@ -333,6 +342,13 @@ class ExtendedInputboxHooks
 		}
 
 		return $html;
+	}
+
+	/** Conteneur visuel (div centré) d'un formulaire InputBox, ou le formulaire lui-même. */
+	private static function findOuterContainer(DOMXPath $xpath, DOMElement $form)
+	{
+		$c = $xpath->query("ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' mw-inputbox-centered ')][1]", $form);
+		return $c instanceof DOMNodeList && $c->length ? $c->item(0) : $form;
 	}
 
 	private static function findDescendantForm(DOMXPath $xpath, DOMElement $container)
