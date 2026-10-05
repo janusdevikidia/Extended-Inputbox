@@ -1,10 +1,13 @@
 {
     "name": "Extended-Inputbox",
     "version": "3.0.1",
-    "author": "Célian & Janus",
+    "author": [
+        "Célian",
+        "Janus"
+    ],
     "url": "https://github.com/Janusdevikidia/Extended-Inputbox",
     "descriptionmsg": "extendedinputbox-desc",
-    "type": "other",
+    "type": "parserhook",
     "manifest_version": 2,
     "requires": {
         "extensions": {
