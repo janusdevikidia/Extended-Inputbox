@@ -15,8 +15,8 @@
 }
 
 .eib-sp-panel {
-	background: #fff;
-	border: 1px solid #a2a9b1;
+	background: var(--background-color-base, #fff);
+	border: 1px solid var(--border-color-base, #a2a9b1);
 	border-radius: 2px;
 	padding: 1em 1.2em 1.2em;
 	margin-bottom: 1.2em;
@@ -202,8 +202,7 @@
 .eib-sp-validation-item + .eib-sp-validation-item {
 	margin-top: 0.3em;
 }
-/* Grille des réglages généraux et ligne du marqueur « requis » (classes
- * posées par le JS mais jusqu'ici sans style). */
+/* Grille des réglages généraux (classe posée par le JS). */
 .eib-sp-general-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -219,9 +218,98 @@
 	margin-top: 0;
 }
 
-.eib-sp-marker-row {
+
+/* ---- Cases à cocher des options avancées ---------------------------------
+ * Chaque option = ligne « case | libellé » sur une grille à 2 colonnes : toutes
+ * les cases sont sur le même axe vertical et les libellés démarrent au même
+ * endroit, même quand l'un d'eux passe sur plusieurs lignes. */
+.eib-sp-options {
+	grid-column: 1 / -1;
+	display: grid;
+	gap: 0.9em;
+	margin-top: 0.4em;
+	padding-top: 0.8em;
+	border-top: 1px solid #eaecf0;
+}
+
+.eib-sp-option {
+	display: grid;
+	grid-template-columns: 1.6em 1fr;
+	column-gap: 0.7em;
+	align-items: start;
+	cursor: pointer;
+	line-height: 1.5;
+}
+
+.eib-sp-option-box {
+	display: flex;
+	justify-content: center;
+	padding-top: 0.15em;
+}
+
+.eib-sp-option-box .oo-ui-checkboxInputWidget {
+	margin: 0;
+}
+
+.eib-sp-option-text {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.eib-sp-general-grid > .eib-sp-wide {
+	grid-column: 1 / -1;
+}
+
+/* ---- Barre « formulaire inséré » (annuler / mettre à jour / fermer) ------- */
+.eib-sp-inserted-bar {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: flex-end;
-	gap: 0.8em;
+	align-items: center;
+	gap: 0.6em;
+	margin: 0.6em 0;
+	padding: 0.4em 0.6em;
+	border: 1px solid #a7d7f9;
+	border-left-width: 4px;
+	border-radius: 2px;
+	background: #eaf3ff;
+}
+
+.eib-sp-inserted-label {
+	font-weight: 600;
+	color: #202122;
+}
+
+/* ---- Formulaires déjà présents dans la page cible ------------------------- */
+.eib-sp-detected {
+	margin: 0.6em 0;
+	border: 1px solid #eaecf0;
+	border-radius: 2px;
+	background: #f8f9fa;
+	padding: 0.4em 0.8em;
+}
+
+.eib-sp-detected-title {
+	font-weight: 600;
+	margin-bottom: 0.2em;
+}
+
+.eib-sp-detected-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6em;
+}
+
+.eib-sp-detected-text {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	font-size: 0.92em;
+}
+
+.eib-sp-extra-note {
+	margin-top: 0.4em;
+	font-size: 0.88em;
+	color: #54595d;
+	font-family: monospace, monospace;
+	overflow-wrap: anywhere;
 }

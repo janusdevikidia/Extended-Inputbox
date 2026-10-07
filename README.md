@@ -1,6 +1,6 @@
 # Extended Inputbox
 
-![version](https://img.shields.io/badge/version-3.0.1-007ec6)
+![version](https://img.shields.io/badge/version-3.1.0-007ec6)
 ![license](https://img.shields.io/badge/license-GPL--3.0-4c1)
 ![MediaWiki](https://img.shields.io/badge/MediaWiki-%3E%3D%201.39.0-006699)
 
@@ -9,7 +9,7 @@ Extension MediaWiki qui ajoute des formulaires en fenêtre modale aux balises
 plusieurs valeurs avant de créer ou modifier une page, de précharger un modèle
 et de personnaliser le bouton.
 
-Version actuelle : **3.0.1**. Compatible avec MediaWiki **1.39+** et avec
+Version actuelle : **3.1.0**. Compatible avec MediaWiki **1.39+** et avec
 l'extension **InputBox**.
 
 ## Prérequis
@@ -187,6 +187,32 @@ button-border-color=#1a3d7c
 Les formats usuels de couleur CSS sont acceptés (`#3366cc`, `rgb(...)`,
 `hsl(...)` et les noms CSS). Une couleur invalide laisse le formulaire
 utilisable et affiche une erreur sous celui-ci.
+
+## Nouveautés de la 3.1.0
+
+Version centrée sur **Special:Extended-Inputbox** (aucune migration) :
+
+* **Options avancées alignées.** « Masquer le marqueur », « Masqué
+  (`hidden=yes`) » et « Publier directement (`skip-edit=yes`) » forment une
+  colonne unique : cases sur le même axe, libellés alignés. Titre et texte de
+  la popup passent en pleine largeur.
+* **Annuler / mettre à jour après insertion.** Après « Insérer ici », une barre
+  (visible uniquement à ce moment-là) propose trois icônes : *mettre à jour* le
+  bloc dans le texte avec l'état actuel du constructeur, *annuler l'ajout*
+  (retire le bloc et le saut de ligne ajouté), *fermer* la barre en gardant le
+  bloc. Le bloc est retrouvé même si le texte a bougé ; s'il a été modifié à la
+  main, un message l'explique. L'insertion passe par l'historique du navigateur
+  (Ctrl+Z fonctionne).
+* **Modifier un formulaire existant.** Les `<inputbox>` de la page chargée sont
+  listés (hors `<nowiki>`, `<pre>`, `<syntaxhighlight>`) ; « Modifier dans le
+  constructeur » les charge dans les onglets, et la barre ci-dessus permet de
+  les mettre à jour. Les lignes que le constructeur ne gère pas (`width=`,
+  `break=`…) sont conservées telles quelles.
+* **Garde-fous.** Avertissement avant de quitter ou recharger avec du texte non
+  publié, confirmation avant de remplacer le formulaire en cours, bouton
+  « Réinitialiser le formulaire », Entrée dans le champ titre = charger la page.
+* Icônes OOUI déclarées explicitement, types `search2`/`fulltext` proposés,
+  couleurs des panneaux compatibles avec les thèmes sombres.
 
 ## Nouveautés de la 3.0.1
 

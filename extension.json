@@ -1,6 +1,6 @@
 {
     "name": "Extended-Inputbox",
-    "version": "3.0.1",
+    "version": "3.1.0",
     "author": [
         "Célian",
         "Janus"
@@ -86,6 +86,10 @@
                 "oojs-ui-widgets",
                 "oojs-ui-windows",
                 "oojs-ui.styles.icons-content",
+                "oojs-ui.styles.icons-interactions",
+                "oojs-ui.styles.icons-editing-core",
+                "oojs-ui.styles.icons-moderation",
+                "oojs-ui.styles.icons-accessibility",
                 "mediawiki.api",
                 "mediawiki.util",
                 "mediawiki.widgets",
@@ -177,7 +181,23 @@
                 "extendedinputbox-required-marker",
                 "extendedinputbox-special-field-requiredmarker-placeholder",
                 "extendedinputbox-special-warning-pipe-in-field",
-                "extendedinputbox-error-page-exists"
+                "extendedinputbox-error-page-exists",
+                "extendedinputbox-special-btn-update-insert",
+                "extendedinputbox-special-btn-undo-insert",
+                "extendedinputbox-special-btn-keep-insert",
+                "extendedinputbox-special-inserted-bar-label",
+                "extendedinputbox-special-notice-updated",
+                "extendedinputbox-special-notice-removed",
+                "extendedinputbox-special-error-insert-lost",
+                "extendedinputbox-special-detected-label",
+                "extendedinputbox-special-detected-item",
+                "extendedinputbox-special-btn-edit-detected",
+                "extendedinputbox-special-notice-detected-loaded",
+                "extendedinputbox-special-confirm-replace-form",
+                "extendedinputbox-special-confirm-reset",
+                "extendedinputbox-special-confirm-discard",
+                "extendedinputbox-special-btn-reset",
+                "extendedinputbox-special-extra-params"
             ]
         }
     },
