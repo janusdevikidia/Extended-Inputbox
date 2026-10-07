@@ -17,27 +17,35 @@
 
 	var api = new mw.Api();
 
+	function defaultState() {
+		return {
+			general: {
+				type: '',
+				page: '',
+				prefix: '',
+				defaultVal: '',
+				buttonlabel: '',
+				preload: '',
+				preloadParams: '',
+				summary: '',
+				popupTitle: '',
+				popupText: '',
+				requiredMarker: null, // null = non défini ; chaîne (même vide) = surchargé
+				skipEdit: false,
+				hidden: false,
+				bgColor: '',
+				borderColor: ''
+			},
+			fields: [],
+			// Lignes `clé=valeur` d'un <inputbox> existant que le constructeur ne
+			// gère pas (width=, break=, placeholder=…) : conservées telles quelles
+			// pour ne rien perdre lors d'une mise à jour.
+			extraLines: []
+		};
+	}
+
 	// État du formulaire en cours de construction (étape 1).
-	var state = {
-		general: {
-			type: '',
-			page: '',
-			prefix: '',
-			defaultVal: '',
-			buttonlabel: '',
-			preload: '',
-			preloadParams: '',
-			summary: '',
-			popupTitle: '',
-			popupText: '',
-			requiredMarker: null, // null = non défini ; chaîne (même vide) = surchargé
-			skipEdit: false,
-			hidden: false,
-			bgColor: '',
-			borderColor: ''
-		},
-		fields: []
-	};
+	var state = defaultState();
 
 	// État de la page cible (étape 2-4).
 	var target = {
@@ -189,8 +197,113 @@
 			lines.push( buildFieldLine( field ) );
 		} );
 
+		state.extraLines.forEach( function ( line ) {
+			lines.push( line );
+		} );
+
 		lines.push( '</inputbox>' );
 		return lines.join( '\n' );
+	}
+
+	// ---------------------------------------------------------------------
+	// Lecture d'un <inputbox> existant (inverse de generateWikitext)
+	// ---------------------------------------------------------------------
+
+	var GENERAL_KEYS = {
+		type: 'type',
+		page: 'page',
+		prefix: 'prefix',
+		'default': 'defaultVal',
+		buttonlabel: 'buttonlabel',
+		preload: 'preload',
+		'preload-params': 'preloadParams',
+		'popup-preload-params': 'preloadParams',
+		preloadparams: 'preloadParams',
+		summary: 'summary',
+		'popup-title': 'popupTitle',
+		'popup-text': 'popupText',
+		'button-bgcolor': 'bgColor',
+		'button-bg': 'bgColor',
+		'button-border-color': 'borderColor',
+		'button-border': 'borderColor'
+	};
+
+	function isYes( val ) {
+		return /^(yes|true|1|on)$/i.test( ( val || '' ).trim() );
+	}
+
+	/**
+	 * Transforme le contenu d'un bloc <inputbox>…</inputbox> en état du
+	 * constructeur. Les lignes inconnues vont dans extraLines.
+	 *
+	 * @param {string} inner Texte entre les balises.
+	 * @return {Object} état (même forme que defaultState())
+	 */
+	function parseInputboxBlock( inner ) {
+		var st = defaultState();
+		inner.split( /\r?\n/ ).forEach( function ( rawLine ) {
+			var line = rawLine.trim();
+			if ( !line ) {
+				return;
+			}
+			var eq = line.indexOf( '=' );
+			if ( eq === -1 ) {
+				st.extraLines.push( line );
+				return;
+			}
+			var key = line.substring( 0, eq ).trim().toLowerCase();
+			var val = line.substring( eq + 1 ).trim();
+
+			if ( Object.prototype.hasOwnProperty.call( GENERAL_KEYS, key ) ) {
+				st.general[ GENERAL_KEYS[ key ] ] = val;
+			} else if ( key === 'hidden' ) {
+				st.general.hidden = isYes( val );
+			} else if ( key === 'skip-edit' || key === 'popup-skip-edit' ) {
+				st.general.skipEdit = isYes( val );
+			} else if ( key === 'required-marker' || key === 'popup-required-marker' ) {
+				st.general.requiredMarker = val;
+			} else if ( key === 'popup-field' ) {
+				var p = val.split( '|' );
+				st.fields.push( {
+					id: newFieldId(),
+					name: ( p[ 0 ] || '' ).trim(),
+					type: ( p[ 1 ] || 'text' ).trim() === 'checkboxes' ? 'checkbox' : ( p[ 1 ] || 'text' ).trim(),
+					label: ( p[ 2 ] || '' ).trim(),
+					options: ( p[ 3 ] || '' ).trim(),
+					showIf: ( p[ 4 ] || '' ).trim(),
+					required: isYes( p[ 5 ] )
+				} );
+			} else {
+				st.extraLines.push( line );
+			}
+		} );
+		return st;
+	}
+
+	/**
+	 * Repère les blocs <inputbox> d'un wikitexte, hors <nowiki>, <pre> et
+	 * <syntaxhighlight> (simples exemples de code).
+	 *
+	 * @param {string} text
+	 * @return {Array<{start:number,end:number,text:string,inner:string}>}
+	 */
+	function scanInputboxes( text ) {
+		var ignored = [];
+		var ignoreRe = /<(nowiki|pre|syntaxhighlight|source)\b[^>]*>[\s\S]*?<\/\1\s*>/gi;
+		var m;
+		while ( ( m = ignoreRe.exec( text ) ) !== null ) {
+			ignored.push( [ m.index, m.index + m[ 0 ].length ] );
+		}
+		var found = [];
+		var re = /<inputbox>([\s\S]*?)<\/inputbox>/gi;
+		while ( ( m = re.exec( text ) ) !== null ) {
+			var at = m.index;
+			var skip = ignored.some( function ( r ) { return at >= r[ 0 ] && at < r[ 1 ]; } );
+			if ( !skip ) {
+				found.push( { start: at, end: at + m[ 0 ].length, text: m[ 0 ], inner: m[ 1 ] } );
+			}
+		}
+		return found;
 	}
 
 	// ---------------------------------------------------------------------
@@ -200,12 +313,24 @@
 	var FIELD_TYPES = [ 'text', 'textarea', 'select', 'radio', 'checkbox' ];
 	var $generatedTextarea;
 	var $validationBox;
+	var $extraNote;
 	var fieldRows = {};
 
 	function refreshGeneratedWikitext() {
 		if ( $generatedTextarea ) { $generatedTextarea.val( generateWikitext() );
 		}
 		refreshValidationBox();
+		refreshExtraNote();
+	}
+
+	function refreshExtraNote() {
+		if ( !$extraNote ) {
+			return;
+		}
+		var extras = state.extraLines;
+		$extraNote.toggle( extras.length > 0 ).text(
+			extras.length ? mw.msg( 'extendedinputbox-special-extra-params', extras.join( ' ; ' ) ) : ''
+		);
 	}
 
 	function applyFieldRowHighlighting( invalidFieldIds ) {
@@ -226,18 +351,36 @@
 		applyFieldRowHighlighting( result.invalidFieldIds );
 	}
 
+	/**
+	 * Ligne « case à cocher + libellé cliquable », alignée en grille
+	 * (case | texte) pour un rendu identique quelle que soit la longueur du texte.
+	 */
+	function makeOption( checkboxWidget, text ) {
+		return $( '<label>' ).addClass( 'eib-sp-option' ).append(
+			$( '<span>' ).addClass( 'eib-sp-option-box' ).append( checkboxWidget.$element ),
+			$( '<span>' ).addClass( 'eib-sp-option-text' ).text( text )
+		);
+	}
+
 	function buildGeneralPanel( skipHeading ) {
 		var g = state.general;
 
+		var typeOptions = [
+			{ data: '', label: mw.msg( 'extendedinputbox-special-type-none' ) },
+			{ data: 'search', label: mw.msg( 'extendedinputbox-special-type-search' ) },
+			{ data: 'search2', label: 'search2' },
+			{ data: 'fulltext', label: 'fulltext' },
+			{ data: 'create', label: mw.msg( 'extendedinputbox-special-type-create' ) },
+			{ data: 'comment', label: mw.msg( 'extendedinputbox-special-type-comment' ) },
+			{ data: 'commenttitle', label: mw.msg( 'extendedinputbox-special-type-commenttitle' ) },
+			{ data: 'move', label: mw.msg( 'extendedinputbox-special-type-move' ) }
+		];
+		// Type inconnu (bloc existant) : on l'ajoute pour ne pas le perdre.
+		if ( !typeOptions.some( function ( o ) { return o.data === g.type; } ) ) {
+			typeOptions.push( { data: g.type, label: g.type } );
+		}
 		var typeDropdown = new OO.ui.DropdownInputWidget( {
-			options: [
-				{ data: '', label: mw.msg( 'extendedinputbox-special-type-none' ) },
-				{ data: 'search', label: mw.msg( 'extendedinputbox-special-type-search' ) },
-				{ data: 'create', label: mw.msg( 'extendedinputbox-special-type-create' ) },
-				{ data: 'comment', label: mw.msg( 'extendedinputbox-special-type-comment' ) },
-				{ data: 'commenttitle', label: mw.msg( 'extendedinputbox-special-type-commenttitle' ) },
-				{ data: 'move', label: mw.msg( 'extendedinputbox-special-type-move' ) }
-			],
+			options: typeOptions,
 			value: g.type
 		} ).on( 'change', function ( val ) {
 			g.type = val;
@@ -269,8 +412,9 @@
 				refreshGeneratedWikitext();
 			} );
 
-		var hideMarkerCheckbox = new OO.ui.CheckboxInputWidget( { selected: false } );
-		var markerInput = new OO.ui.TextInputWidget( { value: '', placeholder: mw.msg( 'extendedinputbox-special-field-requiredmarker-placeholder' ) } )
+		var markerHidden = g.requiredMarker === '';
+		var hideMarkerCheckbox = new OO.ui.CheckboxInputWidget( { selected: markerHidden } );
+		var markerInput = new OO.ui.TextInputWidget( { value: g.requiredMarker || '', disabled: markerHidden, placeholder: mw.msg( 'extendedinputbox-special-field-requiredmarker-placeholder' ) } )
 			.on( 'change', function ( val ) {
 				g.requiredMarker = hideMarkerCheckbox.isSelected() ? '' : ( val || null );
 				refreshGeneratedWikitext();
@@ -280,6 +424,11 @@
 			g.requiredMarker = checked ? '' : ( markerInput.getValue() || null );
 			refreshGeneratedWikitext();
 		} );
+
+		function wide( layout ) {
+			layout.$element.addClass( 'eib-sp-wide' );
+			return layout;
+		}
 
 		var $grid = $( '<div>' ).addClass( 'eib-sp-general-grid' );
 		[
@@ -291,8 +440,10 @@
 			textField( 'preload', 'extendedinputbox-special-field-preload' ),
 			textField( 'preloadParams', 'extendedinputbox-special-field-preloadparams' ),
 			textField( 'summary', 'extendedinputbox-special-field-summary' ),
-			textField( 'popupTitle', 'extendedinputbox-special-field-popuptitle' ),
-			textField( 'popupText', 'extendedinputbox-special-field-popuptext', true )
+			// Titre et texte de la popup sur toute la largeur : libellés alignés
+			// et zones de saisie de même largeur.
+			wide( textField( 'popupTitle', 'extendedinputbox-special-field-popuptitle' ) ),
+			wide( textField( 'popupText', 'extendedinputbox-special-field-popuptext', true ) )
 		].forEach( function ( layout ) {
 			$grid.append( layout.$element );
 		} );
@@ -305,30 +456,26 @@
 			$advancedGrid.append( layout.$element );
 		} );
 
+		// Marqueur « requis » : champ pleine largeur ; la case « Masquer » rejoint
+		// la colonne de cases à cocher ci-dessous.
+		$advancedGrid.append( wide( new OO.ui.FieldLayout( markerInput, {
+			label: mw.msg( 'extendedinputbox-special-field-requiredmarker' ),
+			align: 'top'
+		} ) ).$element );
+
+		// Cases à cocher : une seule colonne, cases alignées sur le même axe
+		// vertical, libellés alignés entre eux (au lieu de cellules de grille
+		// décalées selon la longueur du libellé).
 		$advancedGrid.append(
-			new OO.ui.FieldLayout( hiddenCheckbox, {
-				label: mw.msg( 'extendedinputbox-special-field-hidden' ),
-				align: 'inline'
-			} ).$element
+			$( '<div>' ).addClass( 'eib-sp-options' ).append(
+				makeOption( hideMarkerCheckbox, mw.msg( 'extendedinputbox-special-field-hidemarker' ) ),
+				makeOption( hiddenCheckbox, mw.msg( 'extendedinputbox-special-field-hidden' ) ),
+				makeOption( skipEditCheckbox, mw.msg( 'extendedinputbox-special-field-skipedit' ) )
+			)
 		);
 
-		$advancedGrid.append(
-			new OO.ui.FieldLayout( skipEditCheckbox, {
-				label: mw.msg( 'extendedinputbox-special-field-skipedit' ),
-				align: 'inline'
-			} ).$element
-		);
-
-		var $markerRow = $( '<div>' ).addClass( 'eib-sp-marker-row' ).append(
-			new OO.ui.FieldLayout( markerInput, {
-				label: mw.msg( 'extendedinputbox-special-field-requiredmarker' ),
-				align: 'top'
-			} ).$element,
-			$( '<label>' ).append( hideMarkerCheckbox.$element, ' ' + mw.msg( 'extendedinputbox-special-field-hidemarker' ) )
-		);
-		$advancedGrid.append($markerRow );
-
-		var $advancedDetails = $( '<details>' ).addClass( 'eib-sp-advanced' ).append(
+		var hasAdvanced = !!( g.bgColor || g.borderColor || g.hidden || g.skipEdit || g.requiredMarker !== null );
+		var $advancedDetails = $( '<details>' ).addClass( 'eib-sp-advanced' ).prop( 'open', hasAdvanced ).append(
 			$( '<summary>' ).text( mw.msg( 'extendedinputbox-special-advanced-toggle' ) ), $advancedGrid
 		);
 
@@ -531,6 +678,7 @@
 			.attr( 'readonly', true );
 
 		$validationBox = $( '<div>' ).addClass( 'eib-sp-validation eib-sp-validation-hidden' );
+		$extraNote = $( '<div>' ).addClass( 'eib-sp-extra-note' ).hide();
 
 		var $copyStatus = $( '<span>' ).addClass( 'eib-sp-status' );
 
@@ -553,11 +701,18 @@
 			icon: 'eye'
 		} ).on( 'click', previewPopup );
 
+		var resetBtn = new OO.ui.ButtonWidget( {
+			label: mw.msg( 'extendedinputbox-special-btn-reset' ),
+			icon: 'trash',
+			flags: [ 'destructive' ],
+			framed: false
+		} ).on( 'click', resetForm );
+
 		refreshGeneratedWikitext();
 
 		return $( '<div>' ).append( $( '<h3>' ).text( mw.msg( 'extendedinputbox-special-generated-label' ) ),
-			$generatedTextarea, $validationBox,
-			$( '<div>' ).addClass( 'eib-sp-toolbar' ).append( copyBtn.$element, previewPopupBtn.$element, $copyStatus )
+			$generatedTextarea, $extraNote, $validationBox,
+			$( '<div>' ).addClass( 'eib-sp-toolbar' ).append( copyBtn.$element, previewPopupBtn.$element, resetBtn.$element, $copyStatus )
 		);
 	}
 
@@ -760,10 +915,21 @@
 		}$statusSpan.text( text || '' ).toggleClass( 'eib-sp-status-error', !!isError );
 	}
 
-	function loadPage() {
+	function loadPage( force ) {
 		var title = targetTitleWidget.getValue().trim();
 		if ( !title ) {
 			showNotice( mw.msg( 'extendedinputbox-special-error-notitle' ), true );
+			return;
+		}
+
+		// Recharger écrase la zone d'édition : prévenir si elle contient des
+		// changements non publiés.
+		if ( dirty && force !== true ) {
+			OO.ui.confirm( mw.msg( 'extendedinputbox-special-confirm-discard' ) ).done( function ( ok ) {
+				if ( ok ) {
+					loadPage( true );
+				}
+			} );
 			return;
 		}
 
@@ -826,12 +992,92 @@
 			}
 
 			$previewBox.empty();
+			dirty = false;
+			trackInserted( null );
+			refreshDetected();
 		} ).fail( function ( code, data ) {
 			showNotice( mw.msg( 'extendedinputbox-special-error-load', extractApiError( code, data ) ), true );
 		} ).always( function () {
 			loadBtn.setDisabled( false );
 			setStatus( '' );
 		} );
+	}
+
+	// ---------------------------------------------------------------------
+	// Insertion suivie : annuler / mettre à jour / valider le bloc inséré
+	// ---------------------------------------------------------------------
+
+	// Bloc <inputbox> actuellement « suivi » dans la zone de texte cible :
+	// { start, core, hadPrefix, hadSuffix }. `core` est le wikitexte du bloc
+	// seul ; hadPrefix/hadSuffix indiquent si un saut de ligne a été ajouté
+	// avant/après lors de l'insertion (pour le retirer proprement à l'annulation).
+	var inserted = null;
+	var dirty = false;
+	var $insertedBar;
+	var $detectedBox;
+	var detectedTimer = null;
+
+	/**
+	 * Remplace [from, to[ dans la zone de texte en passant par l'historique
+	 * natif du navigateur (Ctrl+Z reste possible) ; repli par affectation directe.
+	 */
+	function replaceRange( ta, from, to, text ) {
+		var expected = ta.value.substring( 0, from ) + text + ta.value.substring( to );
+		var ok = false;
+		ta.focus();
+		ta.setSelectionRange( from, to );
+		try {
+			ok = text === '' ? document.execCommand( 'delete' ) : document.execCommand( 'insertText', false, text );
+		} catch ( e ) {
+			ok = false;
+		}
+		if ( !ok || ta.value !== expected ) {
+			ta.value = expected;
+			$( ta ).trigger( 'input' );
+		}
+		var caret = from + text.length;
+		ta.setSelectionRange( caret, caret );
+	}
+
+	/** Fait défiler la zone de texte pour montrer la position donnée. */
+	function scrollTextareaTo( ta, pos ) {
+		var line = ta.value.substring( 0, pos ).split( '\n' ).length - 1;
+		var lh = parseFloat( window.getComputedStyle( ta ).lineHeight );
+		if ( isNaN( lh ) ) {
+			lh = ( parseFloat( window.getComputedStyle( ta ).fontSize ) || 14 ) * 1.4;
+		}
+		ta.scrollTop = Math.max( 0, line * lh - ta.clientHeight / 3 );
+	}
+
+	/**
+	 * Retrouve le bloc suivi : position mémorisée si le texte y est toujours,
+	 * sinon l'occurrence identique la plus proche. -1 si introuvable
+	 * (bloc modifié à la main).
+	 */
+	function locateInserted() {
+		if ( !inserted ) {
+			return -1;
+		}
+		var value = $targetTextarea[ 0 ].value;
+		if ( value.substr( inserted.start, inserted.core.length ) === inserted.core ) {
+			return inserted.start;
+		}
+		var best = -1;
+		var idx = value.indexOf( inserted.core );
+		while ( idx !== -1 ) {
+			if ( best === -1 || Math.abs( idx - inserted.start ) < Math.abs( best - inserted.start ) ) {
+				best = idx;
+			}
+			idx = value.indexOf( inserted.core, idx + 1 );
+		}
+		return best;
+	}
+
+	function trackInserted( record ) {
+		inserted = record;
+		if ( $insertedBar ) {
+			$insertedBar.toggle( !!record );
+		}
 	}
 
 	function insertHere() {
@@ -850,15 +1096,160 @@
 		var after = value.substring( end );
 		var prefix = ( before.length && !/\n$/.test( before ) ) ? '\n' : '';
 		var suffix = ( after.length && !/^\n/.test( after ) ) ? '\n' : '';
-		var toInsert = prefix + insertion + suffix;
 
-		ta.value = before + toInsert + after;
+		replaceRange( ta, start, end, prefix + insertion + suffix );
+		// Le curseur se place juste après le bloc (avant le saut de ligne final).
+		var caret = start + prefix.length + insertion.length;
+		ta.setSelectionRange( caret, caret );
+		scrollTextareaTo( ta, caret );
 
-		var newPos = ( before + toInsert ).length;
-		ta.focus();
-		ta.setSelectionRange( newPos, newPos );
-
+		trackInserted( {
+			start: start + prefix.length,
+			core: insertion,
+			hadPrefix: prefix !== '',
+			hadSuffix: suffix !== ''
+		} );
+		refreshDetected();
 		showNotice( mw.msg( 'extendedinputbox-special-notice-inserted' ), false );
+	}
+
+	function updateInserted() {
+		var pos = locateInserted();
+		if ( pos === -1 ) {
+			showNotice( mw.msg( 'extendedinputbox-special-error-insert-lost' ), true );
+			return;
+		}
+		var ta = $targetTextarea[ 0 ];
+		var newCore = generateWikitext();
+		replaceRange( ta, pos, pos + inserted.core.length, newCore );
+		scrollTextareaTo( ta, pos );
+		trackInserted( { start: pos, core: newCore, hadPrefix: inserted.hadPrefix, hadSuffix: inserted.hadSuffix } );
+		refreshDetected();
+		showNotice( mw.msg( 'extendedinputbox-special-notice-updated' ), false );
+	}
+
+	function removeInserted() {
+		var pos = locateInserted();
+		if ( pos === -1 ) {
+			showNotice( mw.msg( 'extendedinputbox-special-error-insert-lost' ), true );
+			return;
+		}
+		var ta = $targetTextarea[ 0 ];
+		var from = pos;
+		var to = pos + inserted.core.length;
+		if ( inserted.hadPrefix && ta.value.charAt( from - 1 ) === '\n' ) {
+			from--;
+		}
+		if ( inserted.hadSuffix && ta.value.charAt( to ) === '\n' ) {
+			to++;
+		}
+		replaceRange( ta, from, to, '' );
+		scrollTextareaTo( ta, from );
+		trackInserted( null );
+		refreshDetected();
+		showNotice( mw.msg( 'extendedinputbox-special-notice-removed' ), false );
+	}
+
+	function keepInserted() {
+		trackInserted( null );
+		clearNotice();
+	}
+
+	// ---------------------------------------------------------------------
+	// Formulaires déjà présents dans la page cible : liste + édition
+	// ---------------------------------------------------------------------
+
+	function blockSummary( block ) {
+		var st = parseInputboxBlock( block.inner );
+		var bits = [];
+		if ( st.general.type ) { bits.push( st.general.type ); }
+		if ( st.general.buttonlabel ) { bits.push( '« ' + st.general.buttonlabel + ' »' ); }
+		if ( st.fields.length ) { bits.push( st.fields.length + ' ✎' ); }
+		return bits.join( ' · ' );
+	}
+
+	function refreshDetected() {
+		if ( !$detectedBox || !$targetTextarea ) {
+			return;
+		}
+		var text = $targetTextarea.val();
+		var blocks = scanInputboxes( text );
+		$detectedBox.empty().toggle( blocks.length > 0 );
+		if ( !blocks.length ) {
+			return;
+		}
+		$detectedBox.append( $( '<div>' ).addClass( 'eib-sp-detected-title' )
+			.text( mw.msg( 'extendedinputbox-special-detected-label', blocks.length ) ) );
+		blocks.forEach( function ( block, i ) {
+			var line = text.substring( 0, block.start ).split( '\n' ).length;
+			var editBtn = new OO.ui.ButtonWidget( {
+				icon: 'edit',
+				label: mw.msg( 'extendedinputbox-special-btn-edit-detected' ),
+				title: mw.msg( 'extendedinputbox-special-btn-edit-detected' ),
+				framed: false,
+				flags: [ 'progressive' ]
+			} ).on( 'click', function () { editDetected( i ); } );
+			$detectedBox.append( $( '<div>' ).addClass( 'eib-sp-detected-item' ).append(
+				$( '<span>' ).addClass( 'eib-sp-detected-text' )
+					.text( mw.msg( 'extendedinputbox-special-detected-item', i + 1, line, blockSummary( block ) ) ),
+				editBtn.$element
+			) );
+		} );
+	}
+
+	function scheduleDetectedRefresh() {
+		clearTimeout( detectedTimer );
+		detectedTimer = setTimeout( refreshDetected, 300 );
+	}
+
+	function isFormPristine() {
+		var def = defaultState();
+		var saved = state;
+		state = def;
+		var pristineText = generateWikitext();
+		state = saved;
+		return generateWikitext() === pristineText;
+	}
+
+	function confirmIfNeeded( msgKey ) {
+		var d = $.Deferred();
+		if ( isFormPristine() ) {
+			return d.resolve( true ).promise();
+		}
+		OO.ui.confirm( mw.msg( msgKey ) ).done( function ( ok ) { d.resolve( !!ok ); } );
+		return d.promise();
+	}
+
+	function editDetected( index ) {
+		var ta = $targetTextarea[ 0 ];
+		var block = scanInputboxes( ta.value )[ index ];
+		if ( !block ) {
+			return;
+		}
+		confirmIfNeeded( 'extendedinputbox-special-confirm-replace-form' ).done( function ( ok ) {
+			if ( !ok ) {
+				return;
+			}
+			state = parseInputboxBlock( block.inner );
+			rebuildBuilder();
+			// À l'annulation, un seul saut de ligne est retiré (pas de ligne vide résiduelle).
+			var nlAfter = ta.value.charAt( block.end ) === '\n';
+			var nlBefore = block.start > 0 && ta.value.charAt( block.start - 1 ) === '\n';
+			trackInserted( { start: block.start, core: block.text, hadPrefix: !nlAfter && nlBefore, hadSuffix: nlAfter } );
+			ta.focus();
+			ta.setSelectionRange( block.end, block.end );
+			scrollTextareaTo( ta, block.start );
+			showNotice( mw.msg( 'extendedinputbox-special-notice-detected-loaded', index + 1 ), 'notice' );
+		} );
+	}
+
+	function resetForm() {
+		confirmIfNeeded( 'extendedinputbox-special-confirm-reset' ).done( function ( ok ) {
+			if ( ok ) {
+				state = defaultState();
+				rebuildBuilder();
+			}
+		} );
 	}
 
 	function previewHere() {
@@ -917,6 +1308,7 @@
 
 		api.postWithToken( 'csrf', editData ).done( function ( res ) {
 			if ( res && res.edit && res.edit.result === 'Success' ) {
+				dirty = false;
 				showNotice( mw.msg( 'extendedinputbox-special-notice-published' ), false );
 				setTimeout( function () {
 					window.location.href = mw.util.getUrl( target.title );
@@ -980,10 +1372,12 @@
 			value: mw.config.get( 'extendedInputboxSpecialTarget' ) || ''
 		} );
 
+		targetTitleWidget.on( 'enter', function () { loadPage(); } );
+
 		loadBtn = new OO.ui.ButtonWidget( {
 			label: mw.msg( 'extendedinputbox-special-btn-load' ),
 			flags: [ 'progressive' ]
-		} ).on( 'click', loadPage );
+		} ).on( 'click', function () { loadPage(); } );
 
 		$statusSpan = $( '<span>' ).addClass( 'eib-sp-status' );
 
@@ -993,7 +1387,11 @@
 		);
 
 		$targetTextarea = $( '<textarea>' ).addClass( 'eib-sp-target-textarea' )
-			.attr( 'placeholder', mw.msg( 'extendedinputbox-special-wikitext-label' ) );
+			.attr( 'placeholder', mw.msg( 'extendedinputbox-special-wikitext-label' ) )
+			.on( 'input', function () {
+				dirty = true;
+				scheduleDetectedRefresh();
+			} );
 
 		var insertBtn = new OO.ui.ButtonWidget( {
 			label: mw.msg( 'extendedinputbox-special-btn-insert' ),
@@ -1014,13 +1412,45 @@
 			insertBtn.$element, previewBtn.$element, publishBtn.$element
 		);
 
+		// Barre « formulaire inséré » : n'apparaît qu'après une insertion (ou
+		// l'édition d'un formulaire existant). Trois icônes : mettre à jour le
+		// bloc dans le texte, annuler l'ajout (retire le bloc), fermer la barre
+		// en gardant le bloc tel quel.
+		var updateBtn = new OO.ui.ButtonWidget( {
+			icon: 'reload',
+			label: mw.msg( 'extendedinputbox-special-btn-update-insert' ),
+			title: mw.msg( 'extendedinputbox-special-btn-update-insert' ),
+			invisibleLabel: true,
+			flags: [ 'progressive' ]
+		} ).on( 'click', updateInserted );
+		var undoBtn = new OO.ui.ButtonWidget( {
+			icon: 'cancel',
+			label: mw.msg( 'extendedinputbox-special-btn-undo-insert' ),
+			title: mw.msg( 'extendedinputbox-special-btn-undo-insert' ),
+			invisibleLabel: true,
+			flags: [ 'destructive' ]
+		} ).on( 'click', removeInserted );
+		var keepBtn = new OO.ui.ButtonWidget( {
+			icon: 'close',
+			label: mw.msg( 'extendedinputbox-special-btn-keep-insert' ),
+			title: mw.msg( 'extendedinputbox-special-btn-keep-insert' ),
+			invisibleLabel: true
+		} ).on( 'click', keepInserted );
+
+		$insertedBar = $( '<div>' ).addClass( 'eib-sp-inserted-bar' ).hide().append(
+			$( '<span>' ).addClass( 'eib-sp-inserted-label' ).text( mw.msg( 'extendedinputbox-special-inserted-bar-label' ) ),
+			new OO.ui.ButtonGroupWidget( { items: [ updateBtn, undoBtn, keepBtn ] } ).$element
+		);
+
+		$detectedBox = $( '<div>' ).addClass( 'eib-sp-detected' ).hide();
+
 		$noticeArea = $( '<div>' ).addClass( 'eib-sp-notice' );
 		$previewBox = $( '<div>' ).addClass( 'eib-sp-preview-box' );
 
 		return $( '<div>' ).append(
 			$( '<h3>' ).text( mw.msg( 'extendedinputbox-special-section-target' ) ), $titleRow,
 			$noticeArea,
-			$targetTextarea, $actionRow,
+			$targetTextarea, $actionRow, $insertedBar, $detectedBox,
 			$( '<h4>' ).text( mw.msg( 'extendedinputbox-special-preview-label' ) ), $previewBox
 		);
 	}
@@ -1028,6 +1458,17 @@
 	// ---------------------------------------------------------------------
 	// Assemblage
 	// ---------------------------------------------------------------------
+
+	var $generalHolder;
+	var $fieldsHolder;
+
+	/** Reconstruit les deux onglets à partir de `state` (chargement d'un bloc, réinitialisation). */
+	function rebuildBuilder() {
+		fieldRows = {};
+		$generalHolder.empty().append( buildGeneralPanel( true ) );
+		$fieldsHolder.empty().append( buildFieldsPanel( true ) );
+		refreshGeneratedWikitext();
+	}
 
 	function init() {
 		var $root = $( '#eib-special-root' );
@@ -1041,13 +1482,15 @@
 			label: mw.msg( 'extendedinputbox-special-section-general' ),
 			expanded: false
 		} );
-		generalTabPanel.$element.addClass( 'eib-sp-tabpanel' ).append( buildGeneralPanel( true ) );
+		$generalHolder = $( '<div>' ).append( buildGeneralPanel( true ) );
+		generalTabPanel.$element.addClass( 'eib-sp-tabpanel' ).append( $generalHolder );
 
 		var fieldsTabPanel = new OO.ui.TabPanelLayout( 'fields', {
 			label: mw.msg( 'extendedinputbox-special-section-fields' ),
 			expanded: false
 		} );
-		fieldsTabPanel.$element.addClass( 'eib-sp-tabpanel' ).append( buildFieldsPanel( true ) );
+		$fieldsHolder = $( '<div>' ).append( buildFieldsPanel( true ) );
+		fieldsTabPanel.$element.addClass( 'eib-sp-tabpanel' ).append( $fieldsHolder );
 
 		var indexLayout = new OO.ui.IndexLayout( { expanded: false, framed: true } );
 		indexLayout.addTabPanels( [ generalTabPanel, fieldsTabPanel ] );
@@ -1062,6 +1505,14 @@
 		$root.append(
 			$intro, $( '<div>' ).addClass( 'eib-sp' ).append( $left, $right )
 		);
+
+		// Prévenir avant de quitter la page avec des changements non publiés.
+		window.addEventListener( 'beforeunload', function ( e ) {
+			if ( dirty ) {
+				e.preventDefault();
+				e.returnValue = '';
+			}
+		} );
 
 		var initialTarget = mw.config.get( 'extendedInputboxSpecialTarget' );
 		if ( initialTarget ) {
