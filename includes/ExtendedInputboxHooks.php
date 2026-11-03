@@ -31,7 +31,7 @@ class ExtendedInputboxHooks
 			// attendre le binding JavaScript. Les InputBox natifs restent utilisables
 			// sans réécriture DOM ni style inline supplémentaire.
 			$out->addInlineStyle(
-				'html.client-js form[data-eib-index] input[type="submit"], html.client-js form[data-eib-index] button[type="submit"] { pointer-events: none; }'
+				'html.client-js:not(.eib-popup-ready) form[data-eib-index] input[type="submit"], html.client-js:not(.eib-popup-ready) form[data-eib-index] button[type="submit"] { pointer-events: none; }'
 			);
 		}
 	}
