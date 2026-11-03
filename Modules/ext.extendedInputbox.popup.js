@@ -167,33 +167,24 @@
 		openExtendedDialog( config, $form, apiInstance || getApi() );
 	} );
 
-	// $content est l'élément réellement mis à jour par ce déclenchement du hook
-	// (pas forcément toute la page) : .find() ci-dessous reste donc scopé à ce
-	// sous-arbre et ne reparcourt jamais tout #mw-content-text inutilement.
-	mw.hook( 'wikipage.content' ).add( function ( $content ) {
-		if ( !$content.is( '#mw-content-text' ) && !$content.closest( '#mw-content-text' ).length ) {
-			return;
-		}
-
-		$content.find( 'form[data-eib-index]' ).each( function () {
-			var $form = $( this );
-			var idx = $form.attr( 'data-eib-index' );
-			var config = configs[ idx ];
-			if ( !config ) { return; }
-
-			var $btn = $form.find( 'input[type="submit"], button[type="submit"], .mw-ui-button' );
-			// Lève le blocage de clic global posé côté serveur (onBeforePageDisplay)
-			// maintenant que le binding du dialogue est prêt. Pas d'opacity à
-			// restaurer : le blocage ne touche plus qu'aux clics (voir
-			// ExtendedInputboxHooks::onBeforePageDisplay).
-			$btn.css( { 'pointer-events': 'auto' } );
-
-			$form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
-				e.preventDefault();
-				openExtendedDialog( config, $form, getApi() );
-			} );
-		} );
+	// Liaison DÉLÉGUÉE au niveau du document (et non plus formulaire par formulaire
+	// via wikipage.content) : DiscussionTools (Minerva mobile) déplace ou clone le
+	// contenu de l'en-tête de page de discussion (« En savoir plus sur cette page »)
+	// hors de #mw-content-text, ce qui détruisait les gestionnaires posés par
+	// wikipage.content. Un gestionnaire sur document survit à tout déplacement,
+	// clonage ou réinjection du formulaire, et la config est retrouvée via
+	// l'attribut data-eib-index (conservé par les clones).
+	$( document ).off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', 'form[data-eib-index]', function ( e ) {
+		var $form = $( this );
+		var config = configs[ $form.attr( 'data-eib-index' ) ];
+		if ( !config ) { return; }
+		e.preventDefault();
+		openExtendedDialog( config, $form, getApi() );
 	} );
+
+	// Lève le blocage de clic posé côté serveur (onBeforePageDisplay) : une règle
+	// CSS globale, donc valable aussi pour les formulaires clonés ou déplacés.
+	document.documentElement.classList.add( 'eib-popup-ready' );
 
 	// Interdit la publication directe vers les pages sensibles (interface,
 	// scripts, styles, JSON) : une popup piégée y ferait publier du code au
@@ -372,7 +363,17 @@
 	function getSharedWindowManager() {
 		if ( !sharedWindowManager ) {
 			sharedWindowManager = new OO.ui.WindowManager();
-			$( 'body' ).append( sharedWindowManager.$element );
+		}
+		// Les fenêtres OOUI d'autres outils (ex. la boîte « À propos de cette page de
+		// discussion » de DiscussionTools sur Minerva) vivent dans la cible de
+		// téléportation d'OOUI quand elle existe. Deux gestionnaires de même niveau
+		// s'empilent selon l'ordre du DOM : on (re)place donc le nôtre en DERNIER, dans
+		// le même conteneur, à chaque ouverture, pour qu'il passe toujours au-dessus
+		// (sinon il s'ouvrait derrière et la page restait bloquée par la fenêtre modale).
+		var container = ( OO.ui.getTeleportTarget && OO.ui.getTeleportTarget() ) || document.body;
+		if ( sharedWindowManager.$element[ 0 ].parentNode !== container ||
+			sharedWindowManager.$element[ 0 ] !== container.lastElementChild ) {
+			$( container ).append( sharedWindowManager.$element );
 		}
 		return sharedWindowManager;
 	}

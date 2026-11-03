@@ -18,6 +18,7 @@
 	//    pas de config pré-calculée pour du contenu ajouté après coup.
 	var api = null;
 	var configCache = null;
+	var fallbackConfigs = [];
 	var skipInitialServerProcessedContent = mw.config.get( 'extendedInputboxServerProcessed' ) === true;
 
 	function isValidCssColor( val ) {
@@ -158,17 +159,26 @@
 
 				if ( !config.title && !config.fields.length ) { return; }
 
-				$form.off( 'submit.extendedInputbox' ).on( 'submit.extendedInputbox', function ( e ) {
-					e.preventDefault();
-					mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'oojs-ui-windows', 'mediawiki.util' ], function () {
-						mw.loader.using( 'ext.extendedInputbox.popup' ).then( function () {
-							mw.hook( 'extendedInputbox.openDialog' ).fire( config, $form, api );
-						} );
-					} );
-				} );
+				// Config rangée par index et référencée par attribut (survit au clonage
+				// du DOM par DiscussionTools) ; le submit est délégué au document.
+				fallbackConfigs.push( config );
+				$form.attr( 'data-eib-fallback', String( fallbackConfigs.length - 1 ) );
 			} );
 		} ).fail( function ( reason ) {
 			mw.log.error( 'ExtendedInputBox: échec de la récupération de la configuration (fallback).', reason );
+		} );
+	} );
+
+
+	$( document ).off( 'submit.extendedInputboxFallback' ).on( 'submit.extendedInputboxFallback', 'form[data-eib-fallback]', function ( e ) {
+		var $form = $( this );
+		var config = fallbackConfigs[ parseInt( $form.attr( 'data-eib-fallback' ), 10 ) ];
+		if ( !config ) { return; }
+		e.preventDefault();
+		mw.loader.using( [ 'oojs-ui-core', 'oojs-ui-widgets', 'oojs-ui-windows', 'mediawiki.util' ], function () {
+			mw.loader.using( 'ext.extendedInputbox.popup' ).then( function () {
+				mw.hook( 'extendedInputbox.openDialog' ).fire( config, $form, api );
+			} );
 		} );
 	} );
 
