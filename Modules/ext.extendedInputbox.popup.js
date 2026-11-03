@@ -363,7 +363,17 @@
 	function getSharedWindowManager() {
 		if ( !sharedWindowManager ) {
 			sharedWindowManager = new OO.ui.WindowManager();
-			$( 'body' ).append( sharedWindowManager.$element );
+		}
+		// Les fenêtres OOUI d'autres outils (ex. la boîte « À propos de cette page de
+		// discussion » de DiscussionTools sur Minerva) vivent dans la cible de
+		// téléportation d'OOUI quand elle existe. Deux gestionnaires de même niveau
+		// s'empilent selon l'ordre du DOM : on (re)place donc le nôtre en DERNIER, dans
+		// le même conteneur, à chaque ouverture, pour qu'il passe toujours au-dessus
+		// (sinon il s'ouvrait derrière et la page restait bloquée par la fenêtre modale).
+		var container = ( OO.ui.getTeleportTarget && OO.ui.getTeleportTarget() ) || document.body;
+		if ( sharedWindowManager.$element[ 0 ].parentNode !== container ||
+			sharedWindowManager.$element[ 0 ] !== container.lastElementChild ) {
+			$( container ).append( sharedWindowManager.$element );
 		}
 		return sharedWindowManager;
 	}
