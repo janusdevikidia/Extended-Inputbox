@@ -1,12 +1,12 @@
 {
-    "name": "Extended-Inputbox",
+    "name": "ExtendedInputBox",
     "version": "3.1.0",
     "author": [
         "Célian",
         "Janus"
     ],
     "license-name": "GPL-3.0-or-later",
-    "url": "https://github.com/Janusdevikidia/Extended-Inputbox",
+    "url": "https://github.com/Janusdevikidia/ExtendedInputBox",
     "descriptionmsg": "extendedinputbox-desc",
     "type": "parserhook",
     "manifest_version": 2,
@@ -22,11 +22,11 @@
         "SpecialExtendedInputbox": "includes/SpecialExtendedInputbox.php"
     },
     "SpecialPages": {
-        "Extended-Inputbox": "SpecialExtendedInputbox"
+        "ExtendedInputBox": "SpecialExtendedInputbox"
     },
     "ResourceFileModulePaths": {
         "localBasePath": "",
-        "remoteExtPath": "Extended-Inputbox"
+        "remoteExtPath": "ExtendedInputBox"
     },
     "ResourceModules": {
         "ext.extendedInputbox.fallback": {

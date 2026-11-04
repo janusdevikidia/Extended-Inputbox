@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Special:Extended-Inputbox — interface visuelle permettant de construire un bloc
+ * Special:ExtendedInputBox — interface visuelle permettant de construire un bloc
  * <inputbox> (natif + paramètres étendus par cette extension), puis de
  * l'insérer dans le wikitexte d'une page cible chargée depuis l'API, avec
  * prévisualisation et publication directe.
@@ -20,7 +20,7 @@ class SpecialExtendedInputbox extends SpecialPage {
 		// faire. Les vérifications spécifiques à LA page cible choisie (protection,
 		// blocage, etc.) restent de toute façon refaites par l'API MediaWiki
 		// elle-même au moment de action=edit, et gérées côté JS.
-		parent::__construct( 'Extended-Inputbox', 'edit' );
+		parent::__construct( 'ExtendedInputBox', 'edit' );
 	}
 
 	/**
@@ -51,8 +51,8 @@ class SpecialExtendedInputbox extends SpecialPage {
 		$out->addModuleStyles( [ 'ext.extendedInputbox.special.styles' ] );
 		$out->addModules( [ 'ext.extendedInputbox.special' ] );
 
-		// Permet de préremplir le champ "page cible" via Special:Extended-Inputbox/Ma_page
-		// ou Special:Extended-Inputbox?target=Ma_page, pratique pour un lien direct
+		// Permet de préremplir le champ "page cible" via Special:ExtendedInputBox/Ma_page
+		// ou Special:ExtendedInputBox?target=Ma_page, pratique pour un lien direct
 		// depuis une autre page du wiki.
 		$requestedTarget = ( $subPage !== null && $subPage !== '' )
 			? $subPage

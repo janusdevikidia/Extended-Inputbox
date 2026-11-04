@@ -6,7 +6,7 @@
  * (ExtendedInputboxHooks::appendErrorNode) et côté JS (fallback.js,
  * applyButtonStyle-like code) : centralisé ici pour permettre la
  * surcharge par un skin ou par le mode sombre de MediaWiki. */
-.extended-inputbox-error {
+.ExtendedInputBox-error {
     color: #d33;
     font-weight: bold;
     margin-top: 8px;
