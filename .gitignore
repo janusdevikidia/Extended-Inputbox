@@ -21,6 +21,7 @@ Thumbs.db
 .env
 .env.local
 config.local.php
+.gitreview
 
 # Rapport de tests et couverture de code
 /coverage/
