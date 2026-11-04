@@ -148,9 +148,9 @@
 				var $btn = $form.find( 'input[type="submit"], button[type="submit"], .mw-ui-button' );
 
 				if ( config.errors && config.errors.length ) {
-					$target.find( '.extended-inputbox-error' ).remove();
+					$target.find( '.ExtendedInputBox-error' ).remove();
 					var $errContainer = $( '<div>' )
-						.addClass( 'extended-inputbox-error' )
+						.addClass( 'ExtendedInputBox-error' )
 						.text( config.errors.join( ' ' ) );
 					$target.append( $errContainer );
 				}
@@ -210,8 +210,8 @@
 
 		// Identifiant unique : l'index repart de 0 à chaque déclenchement du hook.
 		fallbackStyleCounter++;
-		var btnClass = 'extended-inputbox-btn-fallback-' + fallbackStyleCounter;
-		var styleId = 'extended-inputbox-style-fallback-' + fallbackStyleCounter;
+		var btnClass = 'ExtendedInputBox-btn-fallback-' + fallbackStyleCounter;
+		var styleId = 'ExtendedInputBox-style-fallback-' + fallbackStyleCounter;
 
 		var rules = [];
 		if ( bg ) {

@@ -419,7 +419,7 @@ class ExtendedInputboxHooks
 		}
 		$div = $dom->createElement('div');
 		$div->appendChild($dom->createTextNode(implode(' ', $errors)));
-		$div->setAttribute('class', 'extended-inputbox-error');
+		$div->setAttribute('class', 'ExtendedInputBox-error');
 		$container->parentNode->insertBefore($div, $container->nextSibling);
 		return true;
 	}
