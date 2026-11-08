@@ -1,29 +1,7 @@
 <?php
 
-namespace MediaWiki\Extension\ExtendedInputbox;
-
-use DOMDocument;
-use DOMElement;
-use DOMNodeList;
-use DOMXPath;
-use DateTime;
-use DateTimeZone;
-use Exception;
-use MediaWiki\Content\WikitextContent;
-use MediaWiki\MainConfigNames;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Output\OutputPage;
-use MediaWiki\Parser\ParserOptions;
-use MediaWiki\Revision\SlotRecord;
-use MediaWiki\Title\Title;
-use Throwable;
 
-/**
- * Gestionnaires de hooks (enregistrés via "HookHandlers" dans extension.json).
- * Les interfaces de hooks ne sont volontairement pas implémentées : leur
- * namespace a changé entre versions de MediaWiki, alors que les noms de
- * méthodes (onXxx) restent stables.
- */
 class ExtendedInputboxHooks
 {
 
@@ -35,7 +13,7 @@ class ExtendedInputboxHooks
 	 * ("aucun inputbox → aucun JS") ; le cas normal (InputBox posé dans le
 	 * wikitexte de la page) reste couvert à 100%.
 	 */
-	public function onBeforePageDisplay( $out, $skin )
+	public static function onBeforePageDisplay(OutputPage $out, $skin)
 	{
 		// Ne rien charger du tout sur les pages sans InputBox : à ce stade,
 		// OutputPageBeforeHTML a déjà transformé $out (mBodytext), donc getHTML()
@@ -53,19 +31,19 @@ class ExtendedInputboxHooks
 			// attendre le binding JavaScript. Les InputBox natifs restent utilisables
 			// sans réécriture DOM ni style inline supplémentaire.
 			$out->addInlineStyle(
-				'html.client-js form[data-eib-index] input[type="submit"], html.client-js form[data-eib-index] button[type="submit"] { pointer-events: none; }'
+				'html.client-js:not(.eib-popup-ready) form[data-eib-index] input[type="submit"], html.client-js:not(.eib-popup-ready) form[data-eib-index] button[type="submit"] { pointer-events: none; }'
 			);
 		}
 	}
 
-	public function onOutputPageBeforeHTML( $out, &$text )
+	public static function onOutputPageBeforeHTML(OutputPage $out, &$text)
 	{
 		if (strpos($text, 'mw-inputbox') === false && strpos($text, 'createbox') === false) {
 			return;
 		}
 
 		$title = $out->getTitle();
-		if (!$title || !$title->exists() || $title->getContentModel() !== 'wikitext') {
+		if (!$title || !$title->exists() || $title->getContentModel() !== CONTENT_MODEL_WIKITEXT) {
 			return;
 		}
 
@@ -76,9 +54,7 @@ class ExtendedInputboxHooks
 			return;
 		}
 		$shownRev = $out->getRevisionId();
-		$latestRev = MediaWikiServices::getInstance()->getWikiPageFactory()
-			->newFromTitle($title)->getLatest();
-		if ($shownRev && (int) $shownRev !== (int) $latestRev) {
+		if ($shownRev && (int) $shownRev !== (int) $title->getLatestRevID()) {
 			return;
 		}
 
@@ -122,9 +98,7 @@ class ExtendedInputboxHooks
 		);
 
 		return $cache->getWithSetCallback($key, $cache::TTL_DAY, static function () use ($services, $wikiPage, $title) {
-			// WikiPage::getContent() est déprécié (1.36) : on passe par la RevisionRecord.
-			$revision = $wikiPage->getRevisionRecord();
-			$content = $revision ? $revision->getContent(SlotRecord::MAIN) : null;
+			$content = $wikiPage->getContent();
 			if (!$content instanceof WikitextContent) {
 				return [];
 			}
@@ -269,8 +243,9 @@ class ExtendedInputboxHooks
 	 */
 	private static function getLocalTimezoneOffsetMinutes()
 	{
-		$tzName = MediaWikiServices::getInstance()->getMainConfig()
-			->get(MainConfigNames::Localtimezone) ?: 'UTC';
+		global $wgLocaltimezone;
+
+		$tzName = $wgLocaltimezone ?: 'UTC';
 
 		try {
 			$tz = new DateTimeZone($tzName);

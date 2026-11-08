@@ -1,11 +1,5 @@
 <?php
 
-namespace MediaWiki\Extension\ExtendedInputbox;
-
-use MediaWiki\Html\Html;
-use MediaWiki\Message\Message;
-use MediaWiki\SpecialPage\SpecialPage;
-
 /**
  * Special:Extended-Inputbox — interface visuelle permettant de construire un bloc
  * <inputbox> (natif + paramètres étendus par cette extension), puis de
@@ -51,7 +45,7 @@ class SpecialExtendedInputbox extends SpecialPage {
 		$this->checkPermissions();
 
 		$out = $this->getOutput();
-		$out->setPageTitleMsg( $this->msg( 'extendedinputbox-special-title' ) );
+		$out->setPageTitle( $this->msg( 'extendedinputbox-special-title' )->text() );
 		$out->setRobotPolicy( 'noindex,nofollow' );
 
 		$out->addModuleStyles( [ 'ext.extendedInputbox.special.styles' ] );
@@ -76,7 +70,7 @@ class SpecialExtendedInputbox extends SpecialPage {
 	 * Depuis MediaWiki 1.41, cette méthode doit renvoyer un objet Message
 	 * (et non une chaîne, ce qui est déprécié).
 	 *
-	 * @return Message
+	 * @return \Message
 	 */
 	public function getDescription() {
 		return $this->msg( 'extendedinputbox-special' );
