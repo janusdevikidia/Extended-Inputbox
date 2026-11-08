@@ -22,7 +22,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.GERRIT_SSH_KEY }}
 
-            - name: Add Gerrit host key
+      - name: Add Gerrit host key
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -p 29418 gerrit.wikimedia.org >> ~/.ssh/known_hosts
