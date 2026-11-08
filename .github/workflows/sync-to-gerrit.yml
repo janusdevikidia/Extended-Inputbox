@@ -1,0 +1,48 @@
+name: Sync to Gerrit
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - REL1_43
+      - REL1_47
+
+jobs:
+  gerrit-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH for Gerrit
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GERRIT_SSH_KEY }}
+
+      - name: Configure Git Author dynamically
+        run: |
+          COMMITTER_NAME="$(git log -1 --pretty=format:'%an')"
+          COMMITTER_EMAIL="$(git log -1 --pretty=format:'%ae')"
+
+          echo "Committing as: $COMMITTER_NAME <$COMMITTER_EMAIL>"
+
+          git config --global user.name "$COMMITTER_NAME"
+          git config --global user.email "$COMMITTER_EMAIL"
+
+      - name: Push to Gerrit
+        run: |
+          git remote add gerrit "${{ secrets.GERRIT_SSH_URL }}"
+
+          BRANCH="${{ github.ref_name }}"
+          TARGET_BRANCH="$BRANCH"
+
+          if [ "$BRANCH" == "main" ]; then
+            TARGET_BRANCH="master"
+          fi
+
+          echo "Pushing $BRANCH to Gerrit (refs/for/$TARGET_BRANCH)..."
+
+          git push gerrit HEAD:refs/for/$TARGET_BRANCH
