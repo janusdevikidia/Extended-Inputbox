@@ -9,10 +9,10 @@ $specialPageAliases = [];
 
 /** English */
 $specialPageAliases['en'] = [
-	'ExtendedInputBox' => [ 'ExtendedInputBox'],
+	'ExtendedInputBox' => [ 'ExtendedInputBox', 'Extended-Inputbox', "ExtendedInputbox" ],
 ];
 
 /** French */
 $specialPageAliases['fr'] = [
-	'ExtendedInputBox' => [ 'ExtendedInputBox'],
+	'ExtendedInputBox' => [ 'ExtendedInputBox', 'Extended-Inputbox', "ExtendedInputbox" ],
 ];

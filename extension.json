@@ -20,7 +20,7 @@
         "MediaWiki\\Extension\\ExtendedInputbox\\": "includes/"
     },
     "SpecialPages": {
-        "Extended-Inputbox": "MediaWiki\\Extension\\ExtendedInputbox\\SpecialExtendedInputbox"
+        "ExtendedInputBox": "MediaWiki\\Extension\\ExtendedInputbox\\SpecialExtendedInputbox"
     },
     "HookHandlers": {
         "main": {
