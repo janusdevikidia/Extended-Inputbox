@@ -1,5 +1,7 @@
 <?php
 
+namespace MediaWiki\Extension\ExtendedInputbox;
+
 /**
  * Portage PHP du parsing de configuration <inputbox> (auparavant fait en JS,
  * côté client, après coup). Le faire ici permet de calculer couleurs et
@@ -470,3 +472,4 @@ class ExtendedInputboxConfig {
 		return $config;
 	}
 }
+

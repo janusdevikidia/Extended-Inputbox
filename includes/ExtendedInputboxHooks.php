@@ -1,9 +1,49 @@
 <?php
 
-use MediaWiki\MediaWikiServices;
+namespace MediaWiki\Extension\ExtendedInputbox;
+
+use DateTime;
+use DateTimeZone;
+use DOMDocument;
+use DOMElement;
+use DOMNodeList;
+use DOMXPath;
+use Exception;
+use MediaWiki\MainConfigNames;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Page\WikiPageFactory;
+use MediaWiki\Parser\ParserFactory;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Title\Title;
+use Throwable;
 
 class ExtendedInputboxHooks
 {
+	/** @var WikiPageFactory */
+	private $wikiPageFactory;
+
+	/** @var \WANObjectCache|\Wikimedia\ObjectCache\WANObjectCache */
+	private $cache;
+
+	/** @var ParserFactory */
+	private $parserFactory;
+
+	/**
+	 * Services injectés via extension.json (HookHandlers). Le cache n'est pas
+	 * typé volontairement : la classe WANObjectCache a changé de namespace
+	 * entre 1.43 et les versions suivantes.
+	 *
+	 * @param WikiPageFactory $wikiPageFactory
+	 * @param mixed $cache
+	 * @param ParserFactory $parserFactory
+	 */
+	public function __construct( WikiPageFactory $wikiPageFactory, $cache, ParserFactory $parserFactory )
+	{
+		$this->wikiPageFactory = $wikiPageFactory;
+		$this->cache = $cache;
+		$this->parserFactory = $parserFactory;
+	}
 
 	/**
 	 * Compromis assumé : si un <inputbox> n'apparaît que via du contenu injecté
@@ -13,7 +53,7 @@ class ExtendedInputboxHooks
 	 * ("aucun inputbox → aucun JS") ; le cas normal (InputBox posé dans le
 	 * wikitexte de la page) reste couvert à 100%.
 	 */
-	public static function onBeforePageDisplay(OutputPage $out, $skin)
+	public function onBeforePageDisplay($out, $skin)
 	{
 		// Ne rien charger du tout sur les pages sans InputBox : à ce stade,
 		// OutputPageBeforeHTML a déjà transformé $out (mBodytext), donc getHTML()
@@ -36,7 +76,7 @@ class ExtendedInputboxHooks
 		}
 	}
 
-	public static function onOutputPageBeforeHTML(OutputPage $out, &$text)
+	public function onOutputPageBeforeHTML($out, &$text)
 	{
 		if (strpos($text, 'mw-inputbox') === false && strpos($text, 'createbox') === false) {
 			return;
@@ -58,7 +98,7 @@ class ExtendedInputboxHooks
 			return;
 		}
 
-		$blocks = self::getInputboxBlocks($out, $title);
+		$blocks = $this->getInputboxBlocks($title);
 		if (!$blocks) {
 			return;
 		}
@@ -85,11 +125,11 @@ class ExtendedInputboxHooks
 	 *
 	 * @return string[]
 	 */
-	private static function getInputboxBlocks(OutputPage $out, Title $title)
+	private function getInputboxBlocks(Title $title)
 	{
-		$services = MediaWikiServices::getInstance();
-		$wikiPage = $services->getWikiPageFactory()->newFromTitle($title);
-		$cache = $services->getMainWANObjectCache();
+		$wikiPage = $this->wikiPageFactory->newFromTitle($title);
+		$cache = $this->cache;
+		$parserFactory = $this->parserFactory;
 		$key = $cache->makeKey(
 			'extendedinputbox-blocks',
 			$title->getArticleID(),
@@ -97,16 +137,18 @@ class ExtendedInputboxHooks
 			$wikiPage->getTouched()
 		);
 
-		return $cache->getWithSetCallback($key, $cache::TTL_DAY, static function () use ($services, $wikiPage, $title) {
-			$content = $wikiPage->getContent();
-			if (!$content instanceof WikitextContent) {
+		return $cache->getWithSetCallback($key, $cache::TTL_DAY, static function () use ($parserFactory, $wikiPage, $title) {
+			// WikiPage::getContent() est déprécié : on passe par la révision (slot principal).
+			$revision = $wikiPage->getRevisionRecord();
+			$content = $revision ? $revision->getContent(SlotRecord::MAIN) : null;
+			if (!$content || $content->getModel() !== CONTENT_MODEL_WIKITEXT) {
 				return [];
 			}
 			$raw = $content->getText();
 			if (stripos($raw, '<inputbox') === false && strpos($raw, '{{') === false) {
 				return [];
 			}
-			$parser = $services->getParserFactory()->create();
+			$parser = $parserFactory->create();
 			$expanded = $parser->preprocess($raw, $title, ParserOptions::newFromAnon());
 			return ExtendedInputboxConfig::extractRawBlocks($expanded);
 		});
@@ -214,7 +256,7 @@ class ExtendedInputboxHooks
 			// Permet à popup.js de distinguer LOCAL* (heure du wiki) de
 			// CURRENT* (toujours UTC) sans dépendre du fuseau du navigateur
 			// du visiteur, qui n'a aucun rapport avec $wgLocaltimezone.
-			$out->addJsConfigVars('extendedInputboxLocalTZOffset', self::getLocalTimezoneOffsetMinutes());
+			$out->addJsConfigVars('extendedInputboxLocalTZOffset', self::getLocalTimezoneOffsetMinutes($out->getConfig()));
 		}
 
 		if (!$domModified) {
@@ -239,13 +281,12 @@ class ExtendedInputboxHooks
 	 * défaut de MediaWiki), le décalage vaut 0 et LOCAL* == CURRENT*, ce qui
 	 * reproduit fidèlement le comportement natif de MediaWiki.
 	 *
+	 * @param \Config|\MediaWiki\Config\Config $config
 	 * @return int
 	 */
-	private static function getLocalTimezoneOffsetMinutes()
+	private static function getLocalTimezoneOffsetMinutes($config)
 	{
-		global $wgLocaltimezone;
-
-		$tzName = $wgLocaltimezone ?: 'UTC';
+		$tzName = $config->get(MainConfigNames::Localtimezone) ?: 'UTC';
 
 		try {
 			$tz = new DateTimeZone($tzName);
@@ -424,3 +465,4 @@ class ExtendedInputboxHooks
 		return true;
 	}
 }
+

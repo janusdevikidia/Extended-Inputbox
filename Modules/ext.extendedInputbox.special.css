@@ -1,4 +1,4 @@
-/* Special:Extended-Inputbox — mise en page en deux colonnes : construction du
+/* Special:ExtendedInputBox — mise en page en deux colonnes : construction du
  * formulaire à gauche, page cible (chargement/insertion/aperçu/publication)
  * à droite. Repasse en colonne unique sur petit écran. */
 
@@ -179,7 +179,7 @@
 
 /* Avertissements de validation "live" (couleur invalide, champ incomplet,
  * nom de champ dupliqué...) affichés sous le wikitexte généré. Palette
- * "avertissement" (orangé) volontairement distincte de .extended-inputbox-error
+ * "avertissement" (orangé) volontairement distincte de .ExtendedInputBox-error
  * (rouge, réservée aux erreurs bloquantes côté rendu final) : ici, rien
  * n'empêche de continuer à travailler, ce sont des signaux préventifs. */
 .eib-sp-validation {

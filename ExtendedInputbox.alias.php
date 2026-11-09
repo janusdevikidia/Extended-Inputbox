@@ -1,6 +1,6 @@
 <?php
 /**
- * Alias pour Special:Extended-Inputbox.
+ * Alias pour Special:ExtendedInputBox.
  *
  * @file
  */
@@ -9,10 +9,10 @@ $specialPageAliases = [];
 
 /** English */
 $specialPageAliases['en'] = [
-	'Extended-Inputbox' => [ 'Extended-Inputbox'],
+	'ExtendedInputBox' => [ 'ExtendedInputBox', 'Extended-Inputbox', "ExtendedInputbox" ],
 ];
 
 /** French */
 $specialPageAliases['fr'] = [
-	'Extended-Inputbox' => [ 'Extended-Inputbox'],
+	'ExtendedInputBox' => [ 'ExtendedInputBox', 'Extended-Inputbox', "ExtendedInputbox" ],
 ];

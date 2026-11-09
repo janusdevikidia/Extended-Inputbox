@@ -1,5 +1,5 @@
 {
-    "name": "Extended-Inputbox",
+    "name": "ExtendedInputbox",
     "version": "3.1.0",
     "author": [
         "Célian",
@@ -14,19 +14,31 @@
         "extensions": {
             "InputBox": "*"
         },
-        "MediaWiki": ">= 1.39.0"
+        "MediaWiki": ">= 1.43.0"
     },
-    "AutoloadClasses": {
-        "ExtendedInputboxHooks": "includes/ExtendedInputboxHooks.php",
-        "ExtendedInputboxConfig": "includes/ExtendedInputboxConfig.php",
-        "SpecialExtendedInputbox": "includes/SpecialExtendedInputbox.php"
+    "AutoloadNamespaces": {
+        "MediaWiki\\Extension\\ExtendedInputbox\\": "includes/"
     },
     "SpecialPages": {
-        "Extended-Inputbox": "SpecialExtendedInputbox"
+        "ExtendedInputBox": "MediaWiki\\Extension\\ExtendedInputbox\\SpecialExtendedInputbox"
+    },
+    "HookHandlers": {
+        "main": {
+            "class": "MediaWiki\\Extension\\ExtendedInputbox\\ExtendedInputboxHooks",
+            "services": [
+                "WikiPageFactory",
+                "MainWANObjectCache",
+                "ParserFactory"
+            ]
+        }
+    },
+    "Hooks": {
+        "BeforePageDisplay": "main",
+        "OutputPageBeforeHTML": "main"
     },
     "ResourceFileModulePaths": {
         "localBasePath": "",
-        "remoteExtPath": "Extended-Inputbox"
+        "remoteExtPath": "ExtendedInputbox"
     },
     "ResourceModules": {
         "ext.extendedInputbox.fallback": {
@@ -93,7 +105,8 @@
                 "mediawiki.api",
                 "mediawiki.util",
                 "mediawiki.widgets",
-                "mediawiki.jqueryMsg"
+                "mediawiki.jqueryMsg",
+                "mediawiki.Title"
             ],
             "messages": [
                 "extendedinputbox-special",
@@ -201,10 +214,6 @@
             ]
         }
     },
-    "Hooks": {
-        "BeforePageDisplay": "ExtendedInputboxHooks::onBeforePageDisplay",
-        "OutputPageBeforeHTML": "ExtendedInputboxHooks::onOutputPageBeforeHTML"
-    },
     "MessagesDirs": {
         "ExtendedInputbox": [
             "i18n"
@@ -214,3 +223,4 @@
         "ExtendedInputboxAlias": "ExtendedInputbox.alias.php"
     }
 }
+

@@ -12,6 +12,10 @@ et de personnaliser le bouton.
 Version actuelle : **3.1.0**. Compatible avec MediaWiki **1.39+** et avec
 l'extension **InputBox**.
 
+## Contribuer
+
+* Tout ce qui touche à la contribution passe UNIQUEMENT par le GitHub du projet : https://github.com/Janusdevikidia/ExtendedInputBox
+
 ## Prérequis
 
 * MediaWiki 1.39 ou supérieur
@@ -25,12 +29,12 @@ l'extension **InputBox**.
 2. Téléchargez ou clonez ce dépôt dans le dossier `extensions/` de votre installation MediaWiki :
    ```bash
    cd extensions/
-   git clone https://github.com/Janusdevikidia/Extended-Inputbox.git
+   git clone https://github.com/Janusdevikidia/ExtendedInputBox.git
    ```
 3. Ajoutez la ligne suivante dans `LocalSettings.php` :
 
    ```php
-   wfLoadExtension( 'Extended-Inputbox' );
+   wfLoadExtension( 'ExtendedInputBox' );
    ```
 
 4. Lancez la maintenance de MediaWiki si votre installation le demande, puis
@@ -190,7 +194,7 @@ utilisable et affiche une erreur sous celui-ci.
 
 ## Nouveautés de la 3.1.0
 
-Version centrée sur **Special:Extended-Inputbox** (aucune migration) :
+Version centrée sur **Special:ExtendedInputBox** (aucune migration) :
 
 * **Options avancées alignées.** « Masquer le marqueur », « Masqué
   (`hidden=yes`) » et « Publier directement (`skip-edit=yes`) » forment une
@@ -235,14 +239,14 @@ Version de correction (aucune migration nécessaire) :
   (`$10+` géré, pas de re-substitution) ; `PAGENAME`/`FULLPAGENAME` sans
   underscores ; plus d'interprétation de `$&` dans les valeurs.
 * **Sécurité.** Messages d'erreur d'API échappés ; `console.log` de debug retiré.
-* **Special:Extended-Inputbox.** Glisser-déposer limité à la poignée,
+* **Special:ExtendedInputBox.** Glisser-déposer limité à la poignée,
   avertissement si `|` est saisi dans un champ, `createonly` à la publication
   d'une nouvelle page, marqueur « requis » traduisible, CSS des grilles ajoutée.
 * Les boutons de popup ne sont désactivés que si JavaScript est actif.
 
 ## Nouveautés de la 3.0.0
 
-Cette version continue d'enrichir **Special:Extended-Inputbox**, toujours sans
+Cette version continue d'enrichir **Special:ExtendedInputBox**, toujours sans
 changer le format `<inputbox>` (aucune migration nécessaire) :
 
 * **Aperçu de la popup.** Un bouton « Aperçu de la popup » ouvre un dialogue
@@ -261,7 +265,7 @@ changer le format `<inputbox>` (aucune migration nécessaire) :
 
 ## Nouveautés de la 2.5.1
 
-Cette version corrige et enrichit **Special:Extended-Inputbox**, sans changer le
+Cette version corrige et enrichit **Special:ExtendedInputBox**, sans changer le
 format `<inputbox>` lui-même (aucune migration nécessaire depuis la 2.5.0) :
 
 * **Message d'erreur de droits détaillé.** Auparavant, le panneau « Page
@@ -297,9 +301,9 @@ format `<inputbox>` lui-même (aucune migration nécessaire depuis la 2.5.0) :
   s'affiche désormais à côté du bouton « Charger la page » pendant les
   appels à l'API.
 
-## Special:Extended-Inputbox
+## Special:ExtendedInputBox
 
-Cette extension fournit aussi une page spéciale **Special:Extended-Inputbox** : une
+Cette extension fournit aussi une page spéciale **Special:ExtendedInputBox** : une
 interface visuelle pour construire un bloc `<inputbox>` (avec ses champs de
 popup) sans écrire le wikitexte à la main, puis l'insérer directement dans
 une page du wiki.
@@ -323,7 +327,7 @@ Déroulé :
    de la page via l'API (`action=parse`) ; « Publier » enregistre la page
    (`action=edit`, avec jeton CSRF) puis redirige vers celle-ci.
 
-L'accès à Special:Extended-Inputbox nécessite le droit `edit` ; les vérifications
+L'accès à Special:ExtendedInputBox nécessite le droit `edit` ; les vérifications
 propres à la page cible (protection, blocage, conflit d'édition...) restent
 appliquées par l'API MediaWiki au moment de la publication et sont signalées
 dans l'interface.

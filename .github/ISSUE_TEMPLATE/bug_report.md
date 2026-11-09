@@ -15,7 +15,7 @@ Description claire et précise du bug rencontré
 Version de Mediawiki : votre version
 Version de PHP : votre version
 Version d'Inputbox : votre version
-Version d'Extended-InputBox : votre version
+Version d'ExtendedInputBox : votre version
 
 **Captures d'écrans**
 Mettez ici des images de ce que vous avancez si possible.
