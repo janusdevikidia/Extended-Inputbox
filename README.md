@@ -12,6 +12,10 @@ et de personnaliser le bouton.
 Version actuelle : **3.1.0**. Compatible avec MediaWiki **1.39+** et avec
 l'extension **InputBox**.
 
+## Contribuer
+
+* Tout ce qui touche à la contribution passe UNIQUEMENT par le GitHub du projet : https://github.com/Janusdevikidia/ExtendedInputBox
+
 ## Prérequis
 
 * MediaWiki 1.39 ou supérieur
