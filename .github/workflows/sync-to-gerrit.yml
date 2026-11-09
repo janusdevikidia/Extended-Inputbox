@@ -101,12 +101,16 @@ jobs:
 
             # Change-Id déterministe, dérivé du SHA GitHub :
             # un re-run met à jour le même change au lieu d'en créer un doublon.
-            if ! git log -1 --format=%B | grep -q '^Change-Id: '; then
+            # Seul un Change-Id valide dans le DERNIER paragraphe compte ;
+            # ceux du corps (messages de commits squashés) sont ignorés.
+            if ! git log -1 --format=%B | awk -v RS= 'END{print}' \
+                | grep -Eq '^Change-Id: I[0-9a-f]{40}$'; then
               CHANGE_ID="I$(printf 'github-%s-%s' "$c" "$TARGET_BRANCH" | sha1sum | cut -c1-40)"
               # Change-Id dans son propre paragraphe final : Gerrit refuse
               # un footer mélangé à du texte (ex. corps d'un squash GitHub).
               {
-                git log -1 --format=%B | sed -e :a -e '/^[[:space:]]*$/{$d;N;ba' -e '}'
+                git log -1 --format=%B | grep -v '^Change-Id: ' \
+                  | sed -e :a -e '/^[[:space:]]*$/{$d;N;ba' -e '}'
                 printf '\n\nChange-Id: %s\n' "$CHANGE_ID"
               } > /tmp/msg.txt
               git commit --amend -q -F /tmp/msg.txt
