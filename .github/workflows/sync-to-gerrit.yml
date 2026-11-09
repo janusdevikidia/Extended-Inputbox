@@ -7,6 +7,12 @@ on:
       - dev
       - REL1_43
       - REL1_47
+  workflow_dispatch:
+
+# Un seul run à la fois par branche, sans annuler un run en cours
+concurrency:
+  group: gerrit-sync-${{ github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   gerrit-sync:
@@ -27,27 +33,101 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p 29418 gerrit.wikimedia.org >> ~/.ssh/known_hosts
 
-      - name: Configure Git Author dynamically
+      - name: Cherry-pick new commits and push to Gerrit
+        env:
+          GERRIT_SSH_URL: ${{ secrets.GERRIT_SSH_URL }}
+          BRANCH: ${{ github.ref_name }}
+          MAX_COMMITS: 20
         run: |
-          COMMITTER_NAME="$(git log -1 --pretty=format:'%an')"
-          COMMITTER_EMAIL="$(git log -1 --pretty=format:'%ae')"
+          set -euo pipefail
 
-          echo "Committing as: $COMMITTER_NAME <$COMMITTER_EMAIL>"
-
-          git config --global user.name "$COMMITTER_NAME"
-          git config --global user.email "$COMMITTER_EMAIL"
-
-      - name: Push to Gerrit
-        run: |
-          git remote add gerrit "${{ secrets.GERRIT_SSH_URL }}"
-
-          BRANCH="${{ github.ref_name }}"
           TARGET_BRANCH="$BRANCH"
-
-          if [ "$BRANCH" == "main" ]; then
+          if [ "$BRANCH" = "main" ]; then
             TARGET_BRANCH="master"
           fi
 
-          echo "Pushing $BRANCH to Gerrit (refs/for/$TARGET_BRANCH)..."
+          git remote add gerrit "$GERRIT_SSH_URL"
+          git fetch gerrit "$TARGET_BRANCH"
 
-          git push gerrit HEAD:refs/for/$TARGET_BRANCH
+          SOURCE_SHA="$(git rev-parse HEAD)"
+
+          # Commits présents sur GitHub mais pas (encore) dans Gerrit :
+          #  --no-merges     : ignore les merge commits (Gerrit les refuse souvent)
+          #  --cherry-pick   : ignore les commits dont le patch existe déjà côté
+          #                    Gerrit, même avec un SHA différent (ancien merge,
+          #                    rebase/submit Gerrit, etc.)
+          #  --right-only    : uniquement le côté GitHub
+          COMMITS="$(git rev-list --reverse --no-merges --cherry-pick --right-only \
+            "gerrit/$TARGET_BRANCH...$SOURCE_SHA")"
+
+          if [ -z "$COMMITS" ]; then
+            echo "Rien à envoyer : Gerrit contient déjà tout le contenu de $BRANCH."
+            exit 0
+          fi
+
+          COUNT="$(echo "$COMMITS" | wc -l)"
+          echo "$COUNT commit(s) à envoyer vers refs/for/$TARGET_BRANCH :"
+          for c in $COMMITS; do git log -1 --format='  %h %s' "$c"; done
+
+          # Garde-fou : évite de créer des dizaines de changes d'un coup
+          # (premier run sur un vieux dépôt, branche très divergente...)
+          if [ "$COUNT" -gt "$MAX_COMMITS" ]; then
+            echo "::error::$COUNT commits à envoyer (> $MAX_COMMITS). Vérifie manuellement la divergence GitHub/Gerrit."
+            exit 1
+          fi
+
+          # On repart du sommet de la branche Gerrit
+          git checkout -q -B gerrit-sync "gerrit/$TARGET_BRANCH"
+
+          for c in $COMMITS; do
+            # On garde l'auteur d'origine comme committer
+            # (Gerrit vérifie l'e-mail du committer)
+            export GIT_COMMITTER_NAME="$(git log -1 --format='%an' "$c")"
+            export GIT_COMMITTER_EMAIL="$(git log -1 --format='%ae' "$c")"
+            git config user.name  "$GIT_COMMITTER_NAME"
+            git config user.email "$GIT_COMMITTER_EMAIL"
+
+            if ! git cherry-pick "$c"; then
+              if git diff --cached --quiet && git diff --quiet; then
+                echo "Commit $c vide une fois appliqué sur Gerrit : ignoré."
+                git cherry-pick --skip || git cherry-pick --abort || true
+                continue
+              fi
+              echo "::error::Conflit en appliquant $c sur gerrit/$TARGET_BRANCH."
+              git status --short
+              git cherry-pick --abort || true
+              exit 1
+            fi
+
+            # Change-Id déterministe, dérivé du SHA GitHub :
+            # un re-run met à jour le même change au lieu d'en créer un doublon.
+            if ! git log -1 --format=%B | grep -q '^Change-Id: '; then
+              CHANGE_ID="I$(printf 'github-%s-%s' "$c" "$TARGET_BRANCH" | sha1sum | cut -c1-40)"
+              git log -1 --format=%B \
+                | git interpret-trailers --if-exists doNothing --trailer "Change-Id: $CHANGE_ID" \
+                > /tmp/msg.txt
+              git commit --amend -q -F /tmp/msg.txt
+            fi
+          done
+
+          if [ "$(git rev-parse HEAD)" = "$(git rev-parse "gerrit/$TARGET_BRANCH")" ]; then
+            echo "Aucun nouveau commit après cherry-pick, rien à pousser."
+            exit 0
+          fi
+
+          echo "Push vers Gerrit (refs/for/$TARGET_BRANCH)..."
+          set +e
+          OUTPUT="$(git push gerrit "HEAD:refs/for/$TARGET_BRANCH" 2>&1)"
+          STATUS=$?
+          set -e
+          echo "$OUTPUT"
+
+          # Gerrit répond en erreur si le patchset est identique à l'existant :
+          # ce n'est pas un vrai échec (ex. re-run du workflow).
+          if [ $STATUS -ne 0 ]; then
+            if echo "$OUTPUT" | grep -qi 'no new changes'; then
+              echo "Gerrit a déjà ces changements : OK."
+              exit 0
+            fi
+            exit $STATUS
+          fi
