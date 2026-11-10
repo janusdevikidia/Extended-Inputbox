@@ -48,3 +48,6 @@ jobs:
           CLOSE_MERGED_PRS: "true"
           CLEANUP_ABANDONED: "true"
           CLEANUP_GERRIT: "true"
+          VERBOSE: "true"
+          CREATE_MISSING: "true"   # crée le change si aucun n'existe encore
+          FETCH_DEPTH: "100"       # le log montre un fetch à 10 commits, et « base_sha..head_sha (not available) »
