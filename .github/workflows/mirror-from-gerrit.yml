@@ -1,0 +1,49 @@
+name: Mirror from Gerrit
+
+# Gerrit -> GitHub : après tes +2/Submit, réaligne les branches GitHub sur Gerrit
+# (une branche n'est touchée que si GitHub n'a aucun commit en attente).
+on:
+  #schedule:
+  #  - cron: "*/20 * * * *"  #temporairment désactivé
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Simulation (1) ou réel (0)"
+        default: "0"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gerrit-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # MIRROR_PAT : jeton fin (Contents RW + Workflows RW). Nécessaire car GITHUB_TOKEN
+          # ne peut pas écrire de fichiers .github/workflows ; il permet aussi de déclencher
+          # gerrit-pr.yml (fermeture des PR mergées côté Gerrit).
+          token: ${{ secrets.MIRROR_PAT || github.token }}
+
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GERRIT_SSH_KEY }}
+
+      - name: Clé d'hôte Gerrit
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p 29418 gerrit.wikimedia.org >> ~/.ssh/known_hosts
+
+      - name: Réalignement GitHub sur Gerrit
+        env:
+          GERRIT_SSH_URL: ${{ secrets.GERRIT_SSH_URL }}
+          BRANCHES: "main dev REL1_43 REL1_47"
+          BRANCH_MAP: "main:master"
+          GITHUB_ONLY_PATHS: ".github tests .gitattributes"
+          DRY_RUN: ${{ inputs.dry_run || '0' }}
+        run: bash .github/gerrit/gerrit-mirror-back.sh

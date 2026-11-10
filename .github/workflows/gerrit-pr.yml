@@ -1,0 +1,50 @@
+name: Pull requests -> Gerrit
+
+# Les PR GitHub deviennent des changes Gerrit (github2gerrit, version épinglée v2.4.8).
+# Ne PAS merger les PR sur GitHub : fais +2 / Submit dans Gerrit ; la PR est fermée automatiquement.
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize, closed]
+  issue_comment:
+    types: [created]
+  push:
+    branches: [main, master, dev, REL1_43, REL1_47]   # ferme les PR dont le change est mergé
+  workflow_dispatch:
+    inputs:
+      PR_NUMBER:
+        description: "PR à traiter (0 = toutes les PR ouvertes)"
+        default: "0"
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  submit-to-gerrit:
+    runs-on: ubuntu-latest
+    # PR vers main : ignorées tant que main n'est pas renommée master (g2g pousse sur refs/for/<base> tel quel)
+    if: >-
+      github.event_name != 'pull_request_target' || github.event.pull_request.base.ref != 'main'
+    concurrency:
+      group: g2g-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number || github.event_name }}
+      cancel-in-progress: false
+    steps:
+      - name: Soumission à Gerrit
+        # épinglé sur le commit du tag v2.4.8
+        uses: lfreleng-actions/github2gerrit-action@b9d68f3d3630d5020f8b89daa95590f05a277403
+        with:
+          GERRIT_SSH_PRIVKEY_G2G: ${{ secrets.GERRIT_SSH_KEY }}
+          GERRIT_SSH_USER_G2G: ${{ vars.GERRIT_SSH_USER_G2G }}
+          GERRIT_SSH_USER_G2G_EMAIL: ${{ vars.GERRIT_SSH_USER_G2G_EMAIL }}
+          GERRIT_KNOWN_HOSTS: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          GERRIT_SERVER: ${{ vars.GERRIT_SERVER || 'gerrit.wikimedia.org' }}
+          GERRIT_SERVER_PORT: "29418"
+          GERRIT_PROJECT: ${{ vars.GERRIT_PROJECT }}
+          PR_NUMBER: ${{ inputs.PR_NUMBER || '0' }}
+          AUTOMATION_ONLY: "false"      # accepte aussi les PR humaines
+          SUBMIT_SINGLE_COMMITS: "false" # 1 PR = 1 change (squash)
+          PRESERVE_GITHUB_PRS: "true"
+          CLOSE_MERGED_PRS: "true"
+          CLEANUP_ABANDONED: "true"
+          CLEANUP_GERRIT: "true"
