@@ -388,3 +388,4 @@ comportant plusieurs InputBox : la correspondance est faite dans leur ordre
 d'apparition.
 
 [InputBox]: https://www.mediawiki.org/wiki/Extension:InputBox
+<!-- test sync Gerrit -->
