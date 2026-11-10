@@ -1,0 +1,21 @@
+name: Pas de commits de fusion
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          M="$(git rev-list --merges "origin/${{ github.base_ref }}..HEAD" | wc -l)"
+          if [ "$M" -gt 0 ]; then
+            echo "::error::$M commit(s) de fusion dans la PR. Fais un rebase (git rebase origin/${{ github.base_ref }}) au lieu d'un merge."
+            exit 1
+          fi
