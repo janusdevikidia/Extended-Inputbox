@@ -48,3 +48,4 @@ jobs:
           CLOSE_MERGED_PRS: "true"
           CLEANUP_ABANDONED: "true"
           CLEANUP_GERRIT: "true"
+          VERBOSE: "true"
